@@ -6,8 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 # 同じソースから 2 つのプラットフォーム向けにビルドできます。
 #
 #   ブラウザ版（Emscripten / WebAssembly）:
-#     emcmake cmake -B build
-#     cmake --build build
+#     emcmake cmake -B build-web
+#     cmake --build build-web
 #
 #   Linux ネイティブ版:
 #     cmake -B build-native

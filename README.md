@@ -35,13 +35,15 @@ Cursor または VS Code でこのフォルダを開き、**Reopen in Container*
 
 ## ブラウザ版
 
+VS Code では、実行とデバッグで「Chrome で racegame をデバッグ」を選んで F5 を押すと、ビルド・サーバーの起動・Chrome の起動まで自動で行います。
+
 ```bash
-emcmake cmake -B build
-cmake --build build
+emcmake cmake -B build-web
+cmake --build build-web
 python3 -m http.server 8080
 ```
 
-`http://localhost:8080/build/racegame.html`
+`http://localhost:8080/build-web/racegame.html`
 
 ## Linux 版
 

@@ -4,10 +4,34 @@
     {
       "label": "ブラウザ版をビルド",
       "type": "shell",
-      "command": "emcmake cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build",
-      "detail": "Emscripten でビルドする。確認は http://localhost:8080/build/racegame.html",
+      "command": "emcmake cmake -B build-web -DCMAKE_BUILD_TYPE=Debug && cmake --build build-web",
+      "detail": "Emscripten でビルドする。確認は http://localhost:8080/build-web/racegame.html",
       "group": "build",
       "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "ブラウザ版のサーバーを起動",
+      "type": "shell",
+      // すでに 8080 番で動いていれば、新しく起動しない
+      "command": "if (echo > /dev/tcp/127.0.0.1/8080) 2>/dev/null; then echo 'Serving HTTP (already running)'; else python3 -u -m http.server 8080; fi",
+      "detail": "ワークスペースを http://localhost:8080 で配信する",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "http-server",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": {
+          "activesBegin": ".",
+          "beginsPattern": ".",
+          "endsPattern": "Serving HTTP"
+        }
+      }
+    },
+    {
+      "label": "ブラウザ版を準備",
+      "detail": "ブラウザ版をビルドしてサーバーを起動する。Chrome でのデバッグ開始時は自動で実行される",
+      "dependsOrder": "sequence",
+      "dependsOn": ["ブラウザ版をビルド", "ブラウザ版のサーバーを起動"],
+      "problemMatcher": []
     },
     {
       "label": "Linux版をビルド（Debug）",
