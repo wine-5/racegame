@@ -52,6 +52,8 @@ SdlApp::SdlApp(application::GameSession& session, std::vector<Stage> stages, int
 SdlApp::~SdlApp()
 {
     m_input.close();
+    // 音の差し込み口を外してから、音声を閉じる
+    m_audio.close();
     if (m_audioOk)
     {
         Mix_CloseAudio();
@@ -88,10 +90,15 @@ bool SdlApp::init()
     {
         SDL_Log("IMG_Init failed: %s", IMG_GetError());
     }
-    m_audioOk = Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) == 0;
+    // 音の遅れを短くするため、バッファは小さめ（1024 フレーム ≒ 23 ms）
+    m_audioOk = Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) == 0;
     if (!m_audioOk)
     {
         SDL_Log("Mix_OpenAudio failed: %s", Mix_GetError());
+    }
+    else if (!m_audio.open())
+    {
+        SDL_Log("some sounds could not be loaded");
     }
     if (!initWindow())
     {
@@ -151,6 +158,7 @@ bool SdlApp::loadStage(int index)
     }
     m_stageIndex = index;
     m_view.loadStage(m_session.track(), stage.scenery);
+    m_driftSound.reset();
     SDL_Log("stage: %s", stage.name.c_str());
     return true;
 }
@@ -206,6 +214,7 @@ void SdlApp::frame()
     {
         m_session.reset();
         m_view.snapCamera();
+        m_driftSound.reset();
     }
 
     Uint64 now{SDL_GetPerformanceCounter()};
@@ -230,6 +239,7 @@ void SdlApp::frame()
     }
 
     m_session.advance(elapsed, input.drive);
+    m_driftSound.update(m_session.car(), m_session.drift(), input.drive.throttle, float(elapsed), m_session.paused());
 
     int drawableW{};
     int drawableH{};

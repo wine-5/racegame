@@ -1,7 +1,10 @@
 #pragma once
 
+#include "adapters/audio/AudioMixer.hpp"
+#include "adapters/audio/DriftSound.hpp"
 #include "adapters/gl/GameView.hpp"
 #include "adapters/gl/Scenery.hpp"
+#include "adapters/sdl/SdlAudio.hpp"
 #include "adapters/sdl/SdlInput.hpp"
 #include "application/GameSession.hpp"
 #include "application/ports/ITrackSource.hpp"
@@ -96,6 +99,9 @@ private:
     std::vector<Stage> m_stages;
     int m_stageIndex{};
     SdlInput m_input;
+    audio::AudioMixer m_mixer;
+    audio::DriftSound m_driftSound{m_mixer};
+    SdlAudio m_audio{m_mixer};
     gl::GameView m_view;
     SDL_Window* m_window{};
     SDL_GLContext m_gl{};
