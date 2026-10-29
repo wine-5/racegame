@@ -5,25 +5,25 @@ namespace domain
 
 void LapTimer::tick(float s, float length, float dt)
 {
-    if (prevS >= 0)
+    if (m_prevS >= 0)
     {
-        float gap{(length - prevS) + s};
-        if (prevS > length * 0.5f && s < length * 0.5f && gap < 160.0f)
+        float gap{(length - m_prevS) + s};
+        if (m_prevS > length * 0.5f && s < length * 0.5f && gap < 160.0f)
         {
-            if (timing)
+            if (m_timing)
             {
-                if (best < 0 || lap < best)
+                if (m_bestTime < 0 || m_lapTime < m_bestTime)
                 {
-                    best = lap;
+                    m_bestTime = m_lapTime;
                 }
-                completed += 1;
+                m_completed += 1;
             }
-            timing = true;
-            lap = 0;
+            m_timing = true;
+            m_lapTime = 0;
         }
     }
-    prevS = s;
-    lap += dt;
+    m_prevS = s;
+    m_lapTime += dt;
 }
 
 }  // namespace domain

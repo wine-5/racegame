@@ -90,20 +90,20 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     std::snprintf(line, sizeof(line), "%d KM/H", kmh);
     hud.drawText(24, 22, 4.0f, line, 0.95f, 0.96f, 0.98f, 1);
 
-    if (!session.lap().timing)
+    if (!session.lap().timing())
     {
         std::snprintf(line, sizeof(line), "OUT LAP");
     }
     else
     {
-        std::snprintf(line, sizeof(line), "LAP %d", session.lap().completed + 1);
+        std::snprintf(line, sizeof(line), "LAP %d", session.lap().completed() + 1);
     }
     hud.drawText(24, 64, 2.2f, line, 0.85f, 0.88f, 0.92f, 1);
-    formatTime(line, sizeof(line), session.lap().lap);
+    formatTime(line, sizeof(line), session.lap().lapTime());
     hud.drawText(150, 64, 2.2f, line, 0.95f, 0.96f, 0.98f, 1);
 
     char best[32];
-    formatTime(best, sizeof(best), session.lap().best);
+    formatTime(best, sizeof(best), session.lap().bestTime());
     std::snprintf(line, sizeof(line), "BEST %s", best);
     hud.drawText(24, 90, 2.0f, line, 0.75f, 0.8f, 0.7f, 1);
 
