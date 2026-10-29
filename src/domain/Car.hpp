@@ -59,6 +59,26 @@ struct Car
     float slipAngle() const;
 
     /**
+     * @brief 前輪をどこまで切れるか
+     * @return 切れ角の上限（ラジアン）。ドリフト中は深く切れる
+     */
+    float maxLock() const;
+
+    /**
+     * @brief ステア入力 1 のときの切れ角
+     * @return ラジアン。速いほど小さく、滑っているほど大きい
+     */
+    float steerLimit() const;
+
+    /**
+     * @brief 前輪をこの角度にしたいときのステア入力を求める
+     * @details 自動運転が使う。カウンターステアの補助の分を差し引いて逆算する。
+     * @param wheelAngle 車体に対する前輪の角度（ラジアン、右が正）
+     * @return ステア入力（-1..1）
+     */
+    float steerInputFor(float wheelAngle) const;
+
+    /**
      * @brief グリップしたまま進む
      * @details 横滑りはしない。低速で、タイヤの力の計算が不安定になるときに使う。
      * @param dt 進める時間（秒）

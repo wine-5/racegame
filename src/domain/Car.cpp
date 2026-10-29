@@ -18,6 +18,9 @@ constexpr float ROLLING = 0.9f;
 constexpr float WHEELBASE = 3.05f;
 constexpr float STEER_RATE = 2.6f;
 constexpr float WHEEL_RADIUS = 0.34f;
+constexpr float MAX_LOCK = 0.6f;         // 前輪の切れ角の上限（ラジアン）
+constexpr float MAX_DRIFT_LOCK = 0.9f;   // ドリフト中の切れ角の上限（約 52°）
+constexpr float DRIFT_LOCK_GAIN = 0.5f;  // 滑り角 1 ラジアンにつき、切れ角の上限を広げる量
 
 // ---- タイヤと車体 ----
 constexpr float GRAVITY = 9.81f;
@@ -125,6 +128,27 @@ void Car::stepGrip(float dt)
     z += std::cos(yaw) * speed * dt;
 }
 
+float Car::maxLock() const
+{
+    // ドリフト中は前輪を進む向きへそろえられるよう、深く切れるようにする
+    return std::fmin(MAX_LOCK + std::fabs(slipAngle()) * DRIFT_LOCK_GAIN, MAX_DRIFT_LOCK);
+}
+
+float Car::steerLimit() const
+{
+    return std::fmin(maxSteerAt(speed) + std::fabs(slipAngle()), maxLock());
+}
+
+float Car::steerInputFor(float wheelAngle) const
+{
+    float limit{steerLimit()};
+    if (limit < 1e-4f)
+    {
+        return 0;
+    }
+    return clampf((wheelAngle - slipAngle() * COUNTER_STEER_ASSIST) / limit, -1.0f, 1.0f);
+}
+
 float Car::slipAngle() const
 {
     if (std::fabs(speed) < TIRE_MIN_SPEED)
@@ -216,11 +240,11 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
 {
     // 滑っているときは、その分だけ大きく切れるようにし、滑る向きへ自動で少し当てる
     float slip{slipAngle()};
-    float steerLimit{std::fmin(maxSteerAt(speed) + std::fabs(slip), 0.6f)};
-    float target{clampf(input.steer, -1.0f, 1.0f) * steerLimit + slip * COUNTER_STEER_ASSIST};
+    float target{clampf(input.steer, -1.0f, 1.0f) * steerLimit() + slip * COUNTER_STEER_ASSIST};
+    float lock{maxLock()};
     float step{STEER_RATE * dt};
     steerAngle += clampf(target - steerAngle, -step, step);
-    steerAngle = clampf(steerAngle, -0.6f, 0.6f);
+    steerAngle = clampf(steerAngle, -lock, lock);
 
     if (std::fabs(speed) < 0.45f && input.brake > 0.5f && input.throttle < 0.1f)
     {
