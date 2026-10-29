@@ -7,6 +7,8 @@
 #include "domain/Car.hpp"
 #include "domain/DriftScore.hpp"
 #include "domain/LapTimer.hpp"
+#include "domain/Props.hpp"
+#include "domain/StreetLamps.hpp"
 #include "domain/Track.hpp"
 
 namespace application
@@ -28,6 +30,13 @@ public:
      * @return 読み込みに失敗したら false
      */
     bool start(ports::ITrackSource& source);
+
+    /**
+     * @brief 街灯を立てた場所を決める
+     * @details 景色を作る側が、実際に立てた街灯の周回位置を渡す。街灯の無いステージでは空にする。
+     * @param spots 周回位置（m）の並び
+     */
+    void setLampSpots(const std::vector<float>& spots) { m_lamps.place(spots, m_track.length); }
 
     /// 車をスタート位置に戻し、計測をやり直す
     void reset();
@@ -59,6 +68,12 @@ public:
     /// ドリフトの得点
     const domain::DriftScore& drift() const { return m_drift; }
 
+    /// ドリフトで灯していく街灯
+    const domain::StreetLamps& lamps() const { return m_lamps; }
+
+    /// 弾き飛ばせる小物
+    const domain::Props& props() const { return m_props; }
+
     /// 直前のステップで車に渡した入力（音や演出に使う）
     const domain::DriveInput& lastInput() const { return m_lastInput; }
 
@@ -69,6 +84,8 @@ private:
     domain::Car m_car;
     domain::LapTimer m_lap;
     domain::DriftScore m_drift;
+    domain::StreetLamps m_lamps;
+    domain::Props m_props;
     OneButtonDriver m_autoDriver;
     ManualDriver m_manualDriver;
     domain::DriveInput m_lastInput;
