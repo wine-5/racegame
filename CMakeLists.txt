@@ -56,6 +56,7 @@ add_executable(racegame
     src/adapters/gl/SkidMarks.cpp
     src/adapters/gl/TireSmoke.cpp
     src/adapters/gl/TrackMesh.cpp
+    src/adapters/headless/Autopilot.cpp
     src/adapters/headless/SelfTest.cpp
     src/adapters/sdl/SdlApp.cpp
     src/adapters/sdl/SdlAudio.cpp
