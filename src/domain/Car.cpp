@@ -48,6 +48,8 @@ constexpr float HANDBRAKE_REAR_GRIP = 0.35f;
 constexpr float HANDBRAKE_DECEL = 5.0f;  // m/s²
 // 横に滑っているとき、アクセルの力がこの割合まで失われる（真横に滑ったとき）
 constexpr float DRIFT_DRIVE_LOSS = 0.15f;
+// ドリフトを頼まれている間の後輪のグリップ（前輪に対する割合）
+constexpr float REQUEST_REAR_GRIP = 0.62f;
 
 // ---- アーケード向けの補助 ----
 // 滑っている向きへ自動で当てるカウンターステアの強さ
@@ -179,6 +181,12 @@ void Car::stepTire(float dt, const DriveInput& input)
     {
         rearGrip = std::fmin(rearGrip, HANDBRAKE_REAR_GRIP);
     }
+    // ドリフトを頼まれている間は、後輪を滑りやすくして車の後ろを流す
+    const bool requested{input.driftAngle > 0.0f && input.driftDirection != 0.0f};
+    if (requested)
+    {
+        rearGrip = std::fmin(rearGrip, REQUEST_REAR_GRIP);
+    }
 
     const float h{dt / float(TIRE_SUBSTEPS)};
     float prevSlip{std::atan2(lateralSpeed, std::fmax(speed, 1.0f))};
@@ -204,10 +212,15 @@ void Car::stepTire(float dt, const DriveInput& input)
         // アーケード向けの補助: ドリフト中は、入力で決めた角度へ寄せる
         float drifting{
             clampf((std::fabs(slip) - DRIFT_DETECT_MIN) / (DRIFT_DETECT_FULL - DRIFT_DETECT_MIN), 0.0f, 1.0f)};
+        if (requested)
+        {
+            // 頼まれたときは、まだ滑っていなくても目標の角度へ回し始める
+            drifting = 1.0f;
+        }
         if (drifting > 0.0f && !input.handbrake)
         {
             // 右へ曲がるドリフトでは進む向きが車体の左になるので slip は負
-            float direction{slip < 0 ? -1.0f : 1.0f};
+            float direction{requested ? -input.driftDirection : (slip < 0 ? -1.0f : 1.0f)};
             float target{direction * input.driftAngle};
             if (input.driftAngle < 0.0f)
             {

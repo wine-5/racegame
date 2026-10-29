@@ -16,6 +16,8 @@ struct DriveInput
     bool handbrake{};  // 後輪だけをロックする。ドリフトのきっかけに使う
     // ドリフト中に保つ角度（ラジアン）。負なら、ステアとアクセルから角度を決める
     float driftAngle{-1.0f};
+    // ドリフトで曲がる向き（右が 1、左が -1）。0 以外なら、滑り始める前からその向きへ車の後ろを流す
+    float driftDirection{};
 };
 
 /**
