@@ -15,7 +15,8 @@ namespace
 constexpr float LIFE = 0.7f;        // 尾が消えるまでの時間（秒）
 constexpr float START_SLIP = 0.2f;  // これより滑っていると尾を引く（ラジアン、約 11°）
 constexpr float MIN_SPEED = 6.0f;   // これより遅いと引かない（m/s）
-constexpr float SPACING = 0.18f;    // 板を並べる間隔（m）
+constexpr float SPACING = 0.22f;    // 板を並べる間隔（m）
+constexpr float FRESH = 0.06f;      // これより新しい所は描かない（秒）
 constexpr std::size_t MAX_POINTS = 240;
 constexpr float TAIL_X = 0.67f;  // テールランプの左右の位置（m）
 constexpr float TAIL_Y = 0.52f;
@@ -69,9 +70,14 @@ void LightTrail::collect(std::vector<Billboard>& out) const
         {
             continue;
         }
+        // 出たばかりの所は車体と重なるので描かない。重ね描きで明るくなりすぎないよう薄く細くする
+        if (b.age < FRESH)
+        {
+            continue;
+        }
         float fade{1.0f - b.age / LIFE};
-        float alpha{fade * fade * (0.35f + 0.65f * b.strength)};
-        float size{0.16f + 0.12f * b.strength};
+        float alpha{fade * fade * (0.15f + 0.3f * b.strength)};
+        float size{0.12f + 0.08f * b.strength};
         for (int side{}; side < 2; ++side)
         {
             Vec3 from{side == 0 ? a.left : a.right};

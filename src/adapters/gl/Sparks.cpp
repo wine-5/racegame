@@ -127,7 +127,7 @@ void Sparks::collect(std::vector<Billboard>& out) const
         item.r = spark.color.x;
         item.g = spark.color.y;
         item.b = spark.color.z;
-        item.a = 1.0f - t;
+        item.a = 0.75f * (1.0f - t);
         out.push_back(item);
     }
 }

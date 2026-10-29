@@ -162,8 +162,10 @@ void main() {
         float d = distance(uLightPos[i].xyz, vWorld);
         float fall = clamp(1.0 - d / uLightPos[i].w, 0.0, 1.0);
         // 煙は重なると明るくなりすぎるので、光は控えめに当てる
-        light += uLightColor[i] * fall * fall * 0.55;
+        light += uLightColor[i] * fall * fall * 0.3;
     }
+    // 照明の下でも白く飛ばないよう、明るさに上限を付ける（ブルームでにじみすぎないように）
+    light = min(light, vec3(0.85));
     float dist = distance(vWorld, uCamPos);
     float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);
     fragColor = vec4(mix(vColor.rgb * light, uFogColor, fog), vColor.a * edge);
