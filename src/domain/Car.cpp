@@ -363,7 +363,8 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
             worldVz -= sign * ground.rightZ * outward;
             speed = std::sin(yaw) * worldVx + std::cos(yaw) * worldVz;
             lateralSpeed = std::cos(yaw) * worldVx - std::sin(yaw) * worldVz;
-            yawRate *= 0.5f;
+            // 回転を少しだけ弱める。弱めすぎると、壁から離れる向きへ曲がれなくなる
+            yawRate *= 0.85f;
         }
         // 壁の外へ向いている分だけ速度を落とす。コースに沿っているときは壁を擦るだけ。
         float facingOut{sign * (std::sin(yaw) * ground.rightX + std::cos(yaw) * ground.rightZ)};
