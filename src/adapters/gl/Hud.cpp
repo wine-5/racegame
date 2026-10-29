@@ -179,7 +179,7 @@ void drawTitle(Renderer& renderer, const TitleScreen& title, float time)
     float lineY{y + scale * 9.0f};
     float lineW{textWidth(name, scale) * 0.8f};
     renderer.addQuad((w - lineW) * 0.5f, lineY, (w + lineW) * 0.5f, lineY + 3, 0.2f, 0.9f, 1.0f, 0.9f);
-    drawCentered(renderer, lineY + 18, scale * 0.28f, "HOLD THE BUTTON TO DRIFT", 0.75f, 0.85f, 1.0f, 0.9f);
+    drawCentered(renderer, lineY + 18, scale * 0.28f, "WASD TO DRIVE  HOLD SPACE TO DRIFT", 0.75f, 0.85f, 1.0f, 0.9f);
 
     // 始め方。ゆっくり点滅させる
     float blink{0.55f + 0.45f * std::sin(time * 4.0f)};
@@ -256,10 +256,11 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     if (showHelp)
     {
         hud.drawText(24, float(hud.height()) - 78, 1.7f,
-                     "HOLD SPACE / CLICK : DRIFT     R RESET  C CAMERA  P PAUSE  F FULLSCREEN  1-3 STAGE", 0.9f, 0.92f,
-                     0.94f, 1);
-        hud.drawText(24, float(hud.height()) - 54, 1.7f, "PAD: A / RT DRIFT  Y CAMERA  BACK RESET  START PAUSE", 0.75f,
-                     0.8f, 0.84f, 1);
+                     "WASD DRIVE  SPACE DRIFT  A/D DRIFT ANGLE    R RESET  C CAMERA  P PAUSE  F FULLSCREEN  1-3 STAGE",
+                     0.9f, 0.92f, 0.94f, 1);
+        hud.drawText(24, float(hud.height()) - 54, 1.7f,
+                     "PAD: STICK STEER  RT GAS  LT BRAKE  A DRIFT  Y CAMERA  BACK RESET  START PAUSE", 0.75f, 0.8f,
+                     0.84f, 1);
     }
     if (showCredit)
     {
