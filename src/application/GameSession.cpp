@@ -31,6 +31,7 @@ void GameSession::reset()
 {
     m_car.reset(m_track);
     m_lap = LapTimer{};
+    m_drift.reset();
 }
 
 void GameSession::advance(double elapsedSec, const DriveInput& input)
@@ -59,6 +60,7 @@ void GameSession::step(const DriveInput& input)
 {
     m_car.update(float(FIXED_STEP_SEC), input, m_track);
     m_lap.tick(m_car.ground.s, m_track.length, float(FIXED_STEP_SEC));
+    m_drift.update(m_car, float(FIXED_STEP_SEC));
 }
 
 }  // namespace application

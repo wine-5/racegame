@@ -2,6 +2,7 @@
 
 #include "application/ports/ITrackSource.hpp"
 #include "domain/Car.hpp"
+#include "domain/DriftScore.hpp"
 #include "domain/LapTimer.hpp"
 #include "domain/Track.hpp"
 
@@ -51,12 +52,16 @@ public:
     /// 周回の計測
     const domain::LapTimer& lap() const { return m_lap; }
 
+    /// ドリフトの得点
+    const domain::DriftScore& drift() const { return m_drift; }
+
 private:
     void step(const domain::DriveInput& input);
 
     domain::Track m_track;
     domain::Car m_car;
     domain::LapTimer m_lap;
+    domain::DriftScore m_drift;
     bool m_paused{};
     double m_accumulator{};
 };
