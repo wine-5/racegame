@@ -1,5 +1,7 @@
 #include "adapters/gl/Sparks.hpp"
 
+#include "adapters/gl/MultiplierColor.hpp"
+
 #include <algorithm>
 #include <cmath>
 
@@ -17,21 +19,6 @@ constexpr float DRIFT_RATE = 70.0f;  // 倍率 X5 のとき、1 秒あたりタ�
 constexpr float GRAVITY = 9.8f;
 constexpr float WHEEL_X = 0.82f;
 constexpr float WHEEL_Z = -1.38f;
-
-Vec3 multiplierColor(int multiplier)
-{
-    switch (multiplier)
-    {
-        case 2:
-            return {0.25f, 0.85f, 1.0f};
-        case 3:
-            return {1.0f, 0.25f, 0.85f};
-        case 4:
-            return {1.0f, 0.8f, 0.2f};
-        default:
-            return {1.0f, 1.0f, 1.0f};
-    }
-}
 
 }  // namespace
 
