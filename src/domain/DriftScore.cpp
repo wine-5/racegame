@@ -61,6 +61,16 @@ void DriftScore::update(const Car& car, float dt)
     }
 }
 
+void DriftScore::addBonus(float points)
+{
+    if (m_chaining)
+    {
+        m_chainPoints += points;
+        return;
+    }
+    m_total += static_cast<long long>(points);
+}
+
 void DriftScore::finishChain(Result result)
 {
     m_lastResult = result;

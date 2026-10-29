@@ -28,6 +28,13 @@ public:
      */
     void update(const Car& car, float dt);
 
+    /**
+     * @brief ボーナスの点を足す
+     * @details 連続の途中なら連続の点に足し、あとで倍率がかかる。連続していなければそのまま確定する。
+     * @param points 足す点
+     */
+    void addBonus(float points);
+
     /// 最初からやり直す
     void reset() { *this = DriftScore{}; }
 
