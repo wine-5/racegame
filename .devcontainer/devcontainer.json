@@ -21,7 +21,9 @@
                 "twxs.cmake",
                 "ms-vscode.cmake-tools",
                 "ms-vscode.wasm-dwarf-debugging",
-                "GitHub.copilot"
+                "GitHub.copilot",
+                // Rebuild のたびに入れ直さなくて済むようにする
+                "anthropic.claude-code"
             ],
             "settings": {
                 // Claude Codeの権限確認をスキップできるようにする
