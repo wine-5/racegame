@@ -21,6 +21,22 @@ struct GpuMesh
 };
 
 /**
+ * @brief 光の当たり方と空の色
+ * @details 既定値は昼のサーキット。
+ */
+struct Lighting
+{
+    domain::Vec3 sunDir{0.35f, 0.86f, 0.28f};  // 太陽（夜は月）の方向
+    domain::Vec3 sunColor{0.64f, 0.64f, 0.64f};
+    domain::Vec3 ambient{0.36f, 0.36f, 0.36f};  // どの向きの面にも当たる光
+    domain::Vec3 fogColor{0.62f, 0.74f, 0.84f};
+    float fogStart{90.0f};    // 霧が始まる距離（m）
+    float fogRange{1500.0f};  // 霧が濃くなりきるまでの距離（m）
+    domain::Vec3 skyHorizon{0.62f, 0.74f, 0.84f};
+    domain::Vec3 skyZenith{0.28f, 0.48f, 0.78f};
+};
+
+/**
  * @brief カメラの方を向く半透明の板（煙などのパーティクル）
  */
 struct Billboard
@@ -52,6 +68,12 @@ public:
      * @param height 高さ（ピクセル）
      */
     void resize(int width, int height);
+
+    /**
+     * @brief 光の当たり方と空の色を変える
+     * @param lighting 新しい設定
+     */
+    void setLighting(const Lighting& lighting) { m_lighting = lighting; }
 
     /// 画面を消す
     void clearFrame();
@@ -185,6 +207,18 @@ private:
     int m_uModel{-1};
     int m_uCamPos{-1};
     int m_uOrtho{-1};
+    int m_uSunDir{-1};
+    int m_uSunColor{-1};
+    int m_uAmbient{-1};
+    int m_uFogColor{-1};
+    int m_uFog{-1};
+    int m_uSkyHorizon{-1};
+    int m_uSkyZenith{-1};
+    int m_uParticleSunColor{-1};
+    int m_uParticleAmbient{-1};
+    int m_uParticleFogColor{-1};
+    int m_uParticleFog{-1};
+    Lighting m_lighting;
     unsigned m_particleProgram{};
     unsigned m_particleVao{};
     unsigned m_particleVbo{};

@@ -57,17 +57,20 @@ in vec3 vNormal;
 in vec3 vColor;
 in vec3 vWorld;
 uniform vec3 uCamPos;
+uniform vec3 uSunDir;
+uniform vec3 uSunColor;
+uniform vec3 uAmbient;
+uniform vec3 uFogColor;
+uniform vec2 uFog;  // 霧が始まる距離、濃くなりきるまでの距離
 out vec4 fragColor;
 void main() {
     vec3 n = normalize(vNormal);
     if (!gl_FrontFacing) n = -n;
-    vec3 sun = normalize(vec3(0.35, 0.86, 0.28));
-    float light = 0.36 + 0.64 * max(dot(n, sun), 0.0);
+    vec3 light = uAmbient + uSunColor * max(dot(n, normalize(uSunDir)), 0.0);
     vec3 color = vColor * light;
     float dist = distance(vWorld, uCamPos);
-    float fog = clamp((dist - 90.0) / 1500.0, 0.0, 1.0);
-    vec3 haze = vec3(0.62, 0.74, 0.84);
-    fragColor = vec4(mix(color, haze, fog), 1.0);
+    float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);
+    fragColor = vec4(mix(color, uFogColor, fog), 1.0);
 }
 )GLSL";
 
@@ -82,12 +85,12 @@ void main() {
 
 const char* SKY_FS = R"GLSL(
 in float vY;
+uniform vec3 uSkyHorizon;
+uniform vec3 uSkyZenith;
 out vec4 fragColor;
 void main() {
     float t = clamp(vY * 0.5 + 0.5, 0.0, 1.0);
-    vec3 horizon = vec3(0.62, 0.74, 0.84);
-    vec3 zenith = vec3(0.28, 0.48, 0.78);
-    fragColor = vec4(mix(horizon, zenith, smoothstep(0.0, 1.0, t)), 1.0);
+    fragColor = vec4(mix(uSkyHorizon, uSkyZenith, smoothstep(0.0, 1.0, t)), 1.0);
 }
 )GLSL";
 
@@ -131,14 +134,19 @@ in vec2 vUv;
 in vec4 vColor;
 in vec3 vWorld;
 uniform vec3 uCamPos;
+uniform vec3 uSunColor;
+uniform vec3 uAmbient;
+uniform vec3 uFogColor;
+uniform vec2 uFog;
 out vec4 fragColor;
 void main() {
     // 中心が濃く、縁にいくほど薄い丸
     float edge = 1.0 - smoothstep(0.2, 1.0, length(vUv));
+    // 煙は向きを持たないので、太陽の光は向きに関係なく当たるとする
+    vec3 light = min(uAmbient + uSunColor, vec3(1.0));
     float dist = distance(vWorld, uCamPos);
-    float fog = clamp((dist - 90.0) / 1500.0, 0.0, 1.0);
-    vec3 haze = vec3(0.62, 0.74, 0.84);
-    fragColor = vec4(mix(vColor.rgb, haze, fog), vColor.a * edge);
+    float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);
+    fragColor = vec4(mix(vColor.rgb * light, uFogColor, fog), vColor.a * edge);
 }
 )GLSL";
 
@@ -246,6 +254,17 @@ bool Renderer::init()
     m_uOrtho = glGetUniformLocation(m_hudProgram, "uOrtho");
     m_uParticleViewProj = glGetUniformLocation(m_particleProgram, "uViewProj");
     m_uParticleCamPos = glGetUniformLocation(m_particleProgram, "uCamPos");
+    m_uSunDir = glGetUniformLocation(m_worldProgram, "uSunDir");
+    m_uSunColor = glGetUniformLocation(m_worldProgram, "uSunColor");
+    m_uAmbient = glGetUniformLocation(m_worldProgram, "uAmbient");
+    m_uFogColor = glGetUniformLocation(m_worldProgram, "uFogColor");
+    m_uFog = glGetUniformLocation(m_worldProgram, "uFog");
+    m_uSkyHorizon = glGetUniformLocation(m_skyProgram, "uSkyHorizon");
+    m_uSkyZenith = glGetUniformLocation(m_skyProgram, "uSkyZenith");
+    m_uParticleSunColor = glGetUniformLocation(m_particleProgram, "uSunColor");
+    m_uParticleAmbient = glGetUniformLocation(m_particleProgram, "uAmbient");
+    m_uParticleFogColor = glGetUniformLocation(m_particleProgram, "uFogColor");
+    m_uParticleFog = glGetUniformLocation(m_particleProgram, "uFog");
 
     // 板 1 枚は 4 頂点。頂点は xyz + uv + rgba
     glGenVertexArrays(1, &m_particleVao);
@@ -283,7 +302,8 @@ bool Renderer::init()
 
 void Renderer::clearFrame()
 {
-    glClearColor(0.62f, 0.74f, 0.84f, 1.0f);
+    const Vec3& fog{m_lighting.fogColor};
+    glClearColor(fog.x, fog.y, fog.z, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
@@ -299,6 +319,9 @@ void Renderer::drawSky()
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
     glUseProgram(m_skyProgram);
+    const Lighting& l{m_lighting};
+    glUniform3f(m_uSkyHorizon, l.skyHorizon.x, l.skyHorizon.y, l.skyHorizon.z);
+    glUniform3f(m_uSkyZenith, l.skyZenith.x, l.skyZenith.y, l.skyZenith.z);
     glBindVertexArray(m_dummyVao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glDepthMask(GL_TRUE);
@@ -312,6 +335,12 @@ void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
     glUseProgram(m_worldProgram);
     glUniformMatrix4fv(m_uViewProj, 1, GL_FALSE, viewProj.m);
     glUniform3f(m_uCamPos, cameraPos.x, cameraPos.y, cameraPos.z);
+    const Lighting& l{m_lighting};
+    glUniform3f(m_uSunDir, l.sunDir.x, l.sunDir.y, l.sunDir.z);
+    glUniform3f(m_uSunColor, l.sunColor.x, l.sunColor.y, l.sunColor.z);
+    glUniform3f(m_uAmbient, l.ambient.x, l.ambient.y, l.ambient.z);
+    glUniform3f(m_uFogColor, l.fogColor.x, l.fogColor.y, l.fogColor.z);
+    glUniform2f(m_uFog, l.fogStart, l.fogRange);
     m_viewProj = viewProj;
     m_cameraPos = cameraPos;
 }
@@ -350,6 +379,11 @@ void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, V
     glUseProgram(m_particleProgram);
     glUniformMatrix4fv(m_uParticleViewProj, 1, GL_FALSE, m_viewProj.m);
     glUniform3f(m_uParticleCamPos, m_cameraPos.x, m_cameraPos.y, m_cameraPos.z);
+    const Lighting& l{m_lighting};
+    glUniform3f(m_uParticleSunColor, l.sunColor.x, l.sunColor.y, l.sunColor.z);
+    glUniform3f(m_uParticleAmbient, l.ambient.x, l.ambient.y, l.ambient.z);
+    glUniform3f(m_uParticleFogColor, l.fogColor.x, l.fogColor.y, l.fogColor.z);
+    glUniform2f(m_uParticleFog, l.fogStart, l.fogRange);
     glBindVertexArray(m_particleVao);
     glBindBuffer(GL_ARRAY_BUFFER, m_particleVbo);
     glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(m_particleVerts.size() * sizeof(float)), m_particleVerts.data(),
