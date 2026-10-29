@@ -1,15 +1,28 @@
 #pragma once
 
 #include "adapters/gl/GameView.hpp"
+#include "adapters/gl/Scenery.hpp"
 #include "adapters/sdl/SdlInput.hpp"
 #include "application/GameSession.hpp"
+#include "application/ports/ITrackSource.hpp"
 
 #include <SDL.h>
 
 #include <string>
+#include <vector>
 
 namespace adapters::sdl
 {
+
+/**
+ * @brief 遊べるステージ 1 つ分
+ */
+struct Stage
+{
+    std::string name;
+    application::ports::ITrackSource* source{};  // コースの読み込み元。SdlApp より長く生きていること
+    gl::Scenery scenery = gl::Scenery::Circuit;
+};
 
 /**
  * @brief 画面を画像に保存する開発用の設定
@@ -31,10 +44,12 @@ class SdlApp
 {
 public:
     /**
-     * @brief 動かすゲームを指定して作る
+     * @brief 動かすゲームとステージを指定して作る
      * @param session 動かすゲーム。SdlApp より長く生きていること
+     * @param stages 選べるステージ。数字キーの 1 から順に割り当てる
+     * @param firstStage 最初に遊ぶステージの番号
      */
-    explicit SdlApp(application::GameSession& session);
+    SdlApp(application::GameSession& session, std::vector<Stage> stages, int firstStage);
 
     /// 初期化したものを逆順で片付ける
     ~SdlApp();
@@ -74,7 +89,12 @@ private:
     /// 画面を PNG に保存する
     void saveCapture();
 
+    /// ステージを読み込み、車をスタート位置に置く
+    bool loadStage(int index);
+
     application::GameSession& m_session;
+    std::vector<Stage> m_stages;
+    int m_stageIndex{};
     SdlInput m_input;
     gl::GameView m_view;
     SDL_Window* m_window{};

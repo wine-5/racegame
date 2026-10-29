@@ -146,6 +146,12 @@ public:
     void update(GpuMesh& gpu, const CpuMesh& mesh);
 
     /**
+     * @brief 転送済みのメッシュを GPU から消す
+     * @param gpu 消すメッシュ。空に戻る
+     */
+    void release(GpuMesh& gpu);
+
+    /**
      * @brief メッシュを GPU に転送する
      * @param mesh 転送するメッシュ
      * @return 転送したメッシュ

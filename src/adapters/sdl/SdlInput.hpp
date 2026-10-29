@@ -19,6 +19,7 @@ struct InputFrame
     bool pause{};
     bool camera{};
     bool help{};
+    int stage{-1};  // 数字キーで選んだステージの番号（0 から）。押していなければ -1
 };
 
 /**

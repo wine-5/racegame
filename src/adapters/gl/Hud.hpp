@@ -14,7 +14,9 @@ namespace adapters::gl
  * @param session 表示するゲームの状態
  * @param camera 今のカメラ（モード名を表示する）
  * @param showHelp 操作説明を表示するか
+ * @param showCredit 地図データの出典を表示するか（鈴鹿のとき）
  */
-void drawHud(Renderer& renderer, const application::GameSession& session, const ChaseCamera& camera, bool showHelp);
+void drawHud(Renderer& renderer, const application::GameSession& session, const ChaseCamera& camera, bool showHelp,
+             bool showCredit);
 
 }  // namespace adapters::gl

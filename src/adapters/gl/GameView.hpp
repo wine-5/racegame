@@ -2,6 +2,7 @@
 
 #include "adapters/gl/ChaseCamera.hpp"
 #include "adapters/gl/Renderer.hpp"
+#include "adapters/gl/Scenery.hpp"
 #include "adapters/gl/SkidMarks.hpp"
 #include "adapters/gl/TireSmoke.hpp"
 #include "application/GameSession.hpp"
@@ -20,12 +21,19 @@ class GameView
 {
 public:
     /**
-     * @brief シェーダーを作り、コースと車のメッシュを GPU に送る
-     * @details GL コンテキストを作ったあとに呼ぶ。
-     * @param track 描くコース
+     * @brief シェーダーを作り、車のメッシュを GPU に送る
+     * @details GL コンテキストを作ったあとに呼ぶ。そのあと loadStage でコースを読み込む。
      * @return 失敗したら false
      */
-    bool init(const domain::Track& track);
+    bool init();
+
+    /**
+     * @brief ステージの景色を作り直す
+     * @details 煙やタイヤ痕も消し、カメラを車の後ろへ戻す。
+     * @param track 描くコース
+     * @param scenery 景色の種類
+     */
+    void loadStage(const domain::Track& track, Scenery scenery);
 
     /**
      * @brief 1 フレーム描く
@@ -64,6 +72,7 @@ private:
     void drawCar(const domain::Car& car, const domain::Track& track);
 
     Renderer m_renderer;
+    Scenery m_scenery = Scenery::Circuit;
     GpuMesh m_course;
     GpuMesh m_body;
     GpuMesh m_wheel;

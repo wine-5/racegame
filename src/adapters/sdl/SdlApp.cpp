@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <utility>
 #include <vector>
 
 #ifdef __EMSCRIPTEN__
@@ -43,7 +44,8 @@ domain::DriveInput captureDrive(int frame)
 
 }  // namespace
 
-SdlApp::SdlApp(application::GameSession& session) : m_session(session)
+SdlApp::SdlApp(application::GameSession& session, std::vector<Stage> stages, int firstStage)
+    : m_session(session), m_stages(std::move(stages)), m_stageIndex(firstStage)
 {
 }
 
@@ -113,8 +115,8 @@ bool SdlApp::initWindow()
 #endif
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    m_window = SDL_CreateWindow("Suzuka Circuit", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH,
-                                WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
+    m_window = SDL_CreateWindow("Drift", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT,
+                                SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
     if (!m_window)
     {
         SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
@@ -127,11 +129,29 @@ bool SdlApp::initWindow()
         return false;
     }
     SDL_GL_SetSwapInterval(1);
-    if (!m_view.init(m_session.track()))
+    if (!m_view.init())
     {
         SDL_Log("GL init failed");
         return false;
     }
+    return loadStage(m_stageIndex);
+}
+
+bool SdlApp::loadStage(int index)
+{
+    if (index < 0 || index >= static_cast<int>(m_stages.size()))
+    {
+        return false;
+    }
+    const Stage& stage{m_stages[std::size_t(index)]};
+    if (!stage.source || !m_session.start(*stage.source))
+    {
+        SDL_Log("stage load failed: %s", stage.name.c_str());
+        return false;
+    }
+    m_stageIndex = index;
+    m_view.loadStage(m_session.track(), stage.scenery);
+    SDL_Log("stage: %s", stage.name.c_str());
     return true;
 }
 
@@ -177,6 +197,10 @@ void SdlApp::frame()
     if (input.help)
     {
         m_view.toggleHelp();
+    }
+    if (input.stage >= 0 && input.stage != m_stageIndex)
+    {
+        loadStage(input.stage);
     }
     if (input.reset)
     {

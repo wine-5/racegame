@@ -238,6 +238,8 @@ InputFrame SdlInput::poll()
                 frame.pause = true;
             else if (code == SDL_SCANCODE_H)
                 frame.help = true;
+            else if (code >= SDL_SCANCODE_1 && code <= SDL_SCANCODE_9)
+                frame.stage = code - SDL_SCANCODE_1;
         }
         else if (event.type == SDL_CONTROLLERDEVICEADDED)
         {

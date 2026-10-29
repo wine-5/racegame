@@ -44,25 +44,32 @@ float carPitch(const Car& car, const Track& track)
 
 }  // namespace
 
-bool GameView::init(const Track& track)
+bool GameView::init()
 {
     if (!m_renderer.init())
     {
         return false;
     }
-    CpuMesh course;
     CpuMesh body;
     CpuMesh wheel;
     CpuMesh shadow;
-    buildTrackMesh(track, course);
     buildCarBody(body);
     buildCarWheel(wheel);
     buildCarShadow(shadow);
-    m_course = m_renderer.upload(course);
     m_body = m_renderer.upload(body);
     m_wheel = m_renderer.upload(wheel);
     m_shadow = m_renderer.upload(shadow);
     return true;
+}
+
+void GameView::loadStage(const Track& track, Scenery scenery)
+{
+    m_scenery = scenery;
+    CpuMesh course;
+    buildTrackMesh(track, course);
+    m_renderer.release(m_course);
+    m_course = m_renderer.upload(course);
+    snapCamera();
 }
 
 void GameView::render(const application::GameSession& session, float dt, int width, int height)
@@ -98,7 +105,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_smoke.collect(m_billboards, m_camera.eye());
     m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
 
-    drawHud(m_renderer, session, m_camera, m_showHelp);
+    drawHud(m_renderer, session, m_camera, m_showHelp, m_scenery == Scenery::Circuit);
 }
 
 void GameView::drawCar(const Car& car, const Track& track)

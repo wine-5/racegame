@@ -151,7 +151,7 @@ void drawDrift(Renderer& renderer, const DriftScore& drift, const Car& car)
 
 }  // namespace
 
-void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& camera, bool showHelp)
+void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& camera, bool showHelp, bool showCredit)
 {
     Renderer& hud = renderer;
     hud.beginHud();
@@ -198,13 +198,16 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     if (showHelp)
     {
         hud.drawText(24, float(hud.height()) - 78, 1.7f,
-                     "W/UP ACCEL  S/DOWN BRAKE  A/D STEER  SPACE HANDBRAKE  R RESET  C CAMERA  P PAUSE", 0.9f, 0.92f,
-                     0.94f, 1);
+                     "W/UP ACCEL  S/DOWN BRAKE  A/D STEER  SPACE HANDBRAKE  R RESET  C CAMERA  P PAUSE  1-3 STAGE",
+                     0.9f, 0.92f, 0.94f, 1);
         hud.drawText(24, float(hud.height()) - 54, 1.7f,
                      "PAD: RT ACCEL  LT BRAKE  STICK STEER  A HANDBRAKE  Y CAMERA  BACK RESET  START PAUSE", 0.75f,
                      0.8f, 0.84f, 1);
     }
-    hud.drawText(float(hud.width()) - 250, float(hud.height()) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
+    if (showCredit)
+    {
+        hud.drawText(float(hud.width()) - 250, float(hud.height()) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
+    }
     if (session.paused())
     {
         hud.drawText(float(hud.width()) * 0.5f - 70, float(hud.height()) * 0.45f, 5.0f, "PAUSE", 1, 0.95f, 0.9f, 1);

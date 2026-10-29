@@ -536,6 +536,17 @@ void Renderer::update(GpuMesh& gpu, const CpuMesh& mesh)
     glBindVertexArray(m_dummyVao);
 }
 
+void Renderer::release(GpuMesh& gpu)
+{
+    if (gpu.vao != 0)
+    {
+        glDeleteVertexArrays(1, &gpu.vao);
+        glDeleteBuffers(1, &gpu.vbo);
+        glDeleteBuffers(1, &gpu.ibo);
+    }
+    gpu = GpuMesh{};
+}
+
 void Renderer::readPixels(std::vector<std::uint8_t>& rgba) const
 {
     rgba.resize(std::size_t(m_width) * std::size_t(m_height) * 4);
