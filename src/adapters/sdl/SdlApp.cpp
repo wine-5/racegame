@@ -11,6 +11,7 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #endif
 
 namespace adapters::sdl
@@ -168,6 +169,26 @@ void SdlApp::run()
 #endif
 }
 
+void SdlApp::fitCanvas()
+{
+#ifdef __EMSCRIPTEN__
+    // ページの大きさ（CSS）に、キャンバスの画素数を合わせる。高精細な画面では画素を増やすが、重くならないよう 2 倍まで
+    double cssW{};
+    double cssH{};
+    emscripten_get_element_css_size("#canvas", &cssW, &cssH);
+    double ratio{std::min(emscripten_get_device_pixel_ratio(), 2.0)};
+    int width{static_cast<int>(cssW * ratio)};
+    int height{static_cast<int>(cssH * ratio)};
+    int currentW{};
+    int currentH{};
+    emscripten_get_canvas_element_size("#canvas", &currentW, &currentH);
+    if (width > 0 && height > 0 && (width != currentW || height != currentH))
+    {
+        emscripten_set_canvas_element_size("#canvas", width, height);
+    }
+#endif
+}
+
 void SdlApp::frameThunk(void* self)
 {
     static_cast<SdlApp*>(self)->frame();
@@ -226,6 +247,7 @@ void SdlApp::frame()
     m_driftSound.update(m_session.car(), m_session.drift(), m_session.lastInput().throttle, float(elapsed),
                         m_session.paused());
 
+    fitCanvas();
     int drawableW{};
     int drawableH{};
     SDL_GL_GetDrawableSize(m_window, &drawableW, &drawableH);

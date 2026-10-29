@@ -96,6 +96,9 @@ private:
     /// ステージを読み込み、車をスタート位置に置く
     bool loadStage(int index);
 
+    /// ブラウザでは、キャンバスの画素数をページの大きさに合わせる
+    void fitCanvas();
+
     application::GameSession& m_session;
     std::vector<Stage> m_stages;
     int m_stageIndex{};

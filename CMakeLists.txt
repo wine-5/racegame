@@ -126,7 +126,10 @@ if(EMSCRIPTEN)
         "-sMAX_WEBGL_VERSION=2"
         "-sFULL_ES3=1"
         "SHELL:--preload-file ${ASSETS_DIR}@/assets"
+        # 画面いっぱいに表示し、キー入力をゲームに渡す専用のページ
+        "SHELL:--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html"
     )
+    set_property(TARGET racegame APPEND PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html")
 
     set_target_properties(racegame PROPERTIES SUFFIX ".html")
 
