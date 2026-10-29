@@ -1,6 +1,6 @@
-#include "car.hpp"
-#include "render.hpp"
-#include "track.hpp"
+#include "domain/car.hpp"
+#include "adapters/gl/render.hpp"
+#include "domain/track.hpp"
 
 #include <SDL.h>
 #include <SDL_image.h>

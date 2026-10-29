@@ -1,7 +1,7 @@
 #pragma once
 
-#include "meshbuild.hpp"
-#include "track.hpp"
+#include "domain/meshbuild.hpp"
+#include "domain/track.hpp"
 
 struct DriveInput {
     float throttle = 0;  // 0..1

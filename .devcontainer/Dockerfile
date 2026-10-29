@@ -23,6 +23,13 @@ RUN apt-get update && apt-get install -y \
     libgl1-mesa-dri \
     && rm -rf /var/lib/apt/lists/*
 
+# Emscripten 版の SDL2 ポートを事前にビルドしておく
+#   ヘッダーが cache/sysroot/include/SDL2 に入るので、初回ビルド前でも
+#   IntelliSense（F12 の定義へ移動など）が SDL のヘッダーを見つけられる。
+#   remoteUser（emscripten）がキャッシュに書き込めるよう所有者を戻す。
+RUN embuilder build sdl2 sdl2_image:formats=png sdl2_mixer \
+    && chown -R emscripten:emscripten /emsdk/upstream/emscripten/cache
+
 # 日本語のファイル名を扱えるようにする
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8

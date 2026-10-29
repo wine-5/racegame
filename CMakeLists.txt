@@ -23,12 +23,24 @@ endif()
 
 message(STATUS "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 
+# ---------------------------------------------------------------------------
+# racecore: ゲームの中心（domain/ と application/）。
+#   SDL と OpenGL をリンクしない。中心から外側（SDL・GL・ファイル）へ依存すると
+#   ここでコンパイルエラーになる。ヘキサゴナルアーキテクチャの「依存は内側へ」を
+#   ビルドで守るための分割。
+# ---------------------------------------------------------------------------
+add_library(racecore STATIC
+    src/domain/track.cpp
+    src/domain/car.cpp
+)
+target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+# racegame: 外側のアダプター（SDL・GL）と、それを組み立てる main。
 add_executable(racegame
     src/main.cpp
-    src/track.cpp
-    src/car.cpp
-    src/render.cpp
+    src/adapters/gl/render.cpp
 )
+target_link_libraries(racegame PRIVATE racecore)
 
 set(ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
 
@@ -71,6 +83,13 @@ if(EMSCRIPTEN)
         ${EMSCRIPTEN_SDL_FLAGS}
     )
 
+    # racecore も同じデバッグ情報と最適化でビルドする（SDL のフラグは付けない）
+    target_compile_options(racecore PRIVATE
+        "$<$<CONFIG:Debug>:${DEBUG_INFO_COMPILE_FLAGS}>"
+        $<$<CONFIG:Debug>:-O0>
+        $<$<CONFIG:Release>:-O2>
+    )
+
     target_link_options(racegame PRIVATE
         "$<$<CONFIG:Debug>:${DEBUG_INFO_LINK_FLAGS}>"
         $<$<CONFIG:Debug>:-O0>
@@ -105,6 +124,9 @@ else()
     )
 
     target_compile_options(racegame PRIVATE
+        $<$<CONFIG:Release>:-O2>
+    )
+    target_compile_options(racecore PRIVATE
         $<$<CONFIG:Release>:-O2>
     )
 
