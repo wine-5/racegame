@@ -43,6 +43,9 @@ public:
 private:
     static constexpr int MODE_COUNT = 3;
 
+    /// カメラを壁の内側へ戻す
+    void keepInside(const domain::Track& track, const domain::Car& car);
+
     domain::Vec3 m_eye{0, 8, -12};
     domain::Vec3 m_look{0, 0, 0};
     bool m_ready{};
