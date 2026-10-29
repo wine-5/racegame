@@ -46,6 +46,21 @@ constexpr float HANDBRAKE_DECEL = 5.0f;  // m/s²
 // 横に滑っているとき、アクセルの力がこの割合まで失われる（真横に滑ったとき）
 constexpr float DRIFT_DRIVE_LOSS = 0.15f;
 
+// ---- アーケード向けの補助 ----
+// 滑っている向きへ自動で当てるカウンターステアの強さ
+constexpr float COUNTER_STEER_ASSIST = 0.75f;
+// ドリフト中は、入力で決めた目標の角度へ車体の回転を寄せる。キーボードでも角度を保てる
+constexpr float DRIFT_DETECT_MIN = 0.10f;   // この角度から補助を効かせ始める（ラジアン、約 6°）
+constexpr float DRIFT_DETECT_FULL = 0.25f;  // この角度で補助が最大になる（約 14°）
+constexpr float DRIFT_BASE_ANGLE = 0.50f;  // ステアを離してアクセルを踏んでいるときの角度（約 29°）
+constexpr float DRIFT_STEER_ANGLE = 0.30f;  // 曲がる向きへ切ると深く、逆へ切ると浅くなる量
+constexpr float DRIFT_MIN_ANGLE = 0.08f;
+constexpr float DRIFT_MAX_ANGLE = 0.90f;
+constexpr float DRIFT_ASSIST_P = 26.0f;  // 角度のずれに対する強さ
+constexpr float DRIFT_ASSIST_D = 5.0f;   // 角度の変わる速さに対するブレーキ
+// アクセルをこれより戻すと、目標の角度が小さくなってドリフトが終わる
+constexpr float DRIFT_THROTTLE_HOLD = 0.35f;
+
 // これより深い角度になると、元に戻す力をかける（ラジアン、約 55°）
 constexpr float MAX_SLIP_ANGLE = 0.96f;
 constexpr float SLIP_LIMIT_GAIN = 9.0f;
@@ -141,6 +156,7 @@ void Car::stepTire(float dt, const DriveInput& input)
     }
 
     const float h{dt / float(TIRE_SUBSTEPS)};
+    float prevSlip{std::atan2(lateralSpeed, std::fmax(speed, 1.0f))};
     for (int i{}; i < TIRE_SUBSTEPS; ++i)
     {
         float u{std::fmax(speed, 1.0f)};
@@ -157,6 +173,22 @@ void Car::stepTire(float dt, const DriveInput& input)
         float forwardAccel{lateralSpeed * yawRate - forceFront * std::sin(steerAngle) / MASS};
 
         float slip{std::atan2(lateralSpeed, u)};
+        float slipRate{(slip - prevSlip) / h};
+        prevSlip = slip;
+
+        // アーケード向けの補助: ドリフト中は、入力で決めた角度へ寄せる
+        float drifting{
+            clampf((std::fabs(slip) - DRIFT_DETECT_MIN) / (DRIFT_DETECT_FULL - DRIFT_DETECT_MIN), 0.0f, 1.0f)};
+        if (drifting > 0.0f && !input.handbrake)
+        {
+            // 右へ曲がるドリフトでは進む向きが車体の左になるので slip は負
+            float direction{slip < 0 ? -1.0f : 1.0f};
+            float steerInto{-direction * input.steer};
+            float hold{clampf(input.throttle / DRIFT_THROTTLE_HOLD, 0.0f, 1.0f)};
+            float angle{clampf(DRIFT_BASE_ANGLE + DRIFT_STEER_ANGLE * steerInto, DRIFT_MIN_ANGLE, DRIFT_MAX_ANGLE)};
+            float target{direction * (DRIFT_MIN_ANGLE + (angle - DRIFT_MIN_ANGLE) * hold)};
+            yawAccel += drifting * (DRIFT_ASSIST_P * (slip - target) + DRIFT_ASSIST_D * slipRate);
+        }
 
         // 角度が深くなりすぎたら車体を進む向きへ戻す
         if (std::fabs(slip) > MAX_SLIP_ANGLE)
@@ -177,10 +209,10 @@ void Car::stepTire(float dt, const DriveInput& input)
 
 void Car::update(float dt, const DriveInput& input, const Track& track)
 {
-    // 滑っているときは、その分だけ大きく切れるようにする
+    // 滑っているときは、その分だけ大きく切れるようにし、滑る向きへ自動で少し当てる
     float slip{slipAngle()};
     float steerLimit{std::fmin(maxSteerAt(speed) + std::fabs(slip), 0.6f)};
-    float target{clampf(input.steer, -1.0f, 1.0f) * steerLimit};
+    float target{clampf(input.steer, -1.0f, 1.0f) * steerLimit + slip * COUNTER_STEER_ASSIST};
     float step{STEER_RATE * dt};
     steerAngle += clampf(target - steerAngle, -step, step);
     steerAngle = clampf(steerAngle, -0.6f, 0.6f);
