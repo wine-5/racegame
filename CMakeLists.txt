@@ -42,6 +42,8 @@ target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 # racegame: 外側のアダプター（SDL・GL）と、それを組み立てる main。
 add_executable(racegame
     src/Main.cpp
+    src/adapters/course/PortCourse.cpp
+    src/adapters/course/PracticeCircle.cpp
     src/adapters/file/TrackFile.cpp
     src/adapters/gl/CarMesh.cpp
     src/adapters/gl/ChaseCamera.cpp
