@@ -176,6 +176,58 @@ def crash():
     write("crash.wav", fade_out(normalize(np.tanh(sound), 0.85)))
 
 
+def lamp_on():
+    """街灯が灯った音。電気が通るジジッという音のあとに、澄んだ音が上へ抜ける。
+    ゲーム側で倍率に合わせて音を高くする。"""
+    t = timeline(0.8)
+    # ジジッ: 60 Hz で揺れる、こもったノイズ
+    buzz = bandpass(rng.normal(0, 1, len(t)), 300, 2500)
+    buzz *= (0.6 + 0.4 * np.sign(np.sin(2 * np.pi * 60 * t))) * envelope(t, 0.003, 0.05)
+    # 上へ抜ける音: 660 Hz から 1320 Hz へ素早く上がる
+    freq = 660 * 2 ** np.clip(t / 0.08, 0, 1)
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    ping = np.sin(phase) + 0.3 * np.sin(2 * phase) * np.exp(-t / 0.1)
+    ping *= envelope(np.clip(t - 0.03, 0, None), 0.005, 0.22) * (t > 0.03)
+    sound = 0.5 * buzz / (np.std(buzz) + 1e-9) * 0.25 + ping
+    write("lamp_on.wav", fade_out(normalize(sound, 0.7)))
+
+
+def cone_hit():
+    """パイロンを弾いた音。軽いプラスチックのコンッ。"""
+    t = timeline(0.35)
+    knock = np.sin(2 * np.pi * 240 * t * (1 - 0.4 * t)) * envelope(t, 0.001, 0.05)
+    shell = bandpass(rng.normal(0, 1, len(t)), 900, 3500) * envelope(t, 0.001, 0.03)
+    sound = knock + 0.6 * shell / (np.std(shell) + 1e-9) * 0.3
+    write("cone_hit.wav", fade_out(normalize(sound, 0.75)))
+
+
+def drum_hit():
+    """ドラム缶を弾いた音。中が空の金属が、ゴワンと長く鳴る。"""
+    t = timeline(1.0)
+    partials = [(118, 1.0, 0.35), (187, 0.8, 0.3), (296, 0.6, 0.25), (431, 0.45, 0.2), (622, 0.3, 0.12)]
+    ring = sum(a * np.sin(2 * np.pi * f * t) * np.exp(-t / d) for f, a, d in partials)
+    hit = bandpass(rng.normal(0, 1, len(t)), 300, 3000) * envelope(t, 0.001, 0.025)
+    sound = ring + 0.8 * hit / (np.std(hit) + 1e-9) * 0.3
+    write("drum_hit.wav", fade_out(normalize(np.tanh(1.3 * sound), 0.8)))
+
+
+def port_lit():
+    """1 周で街灯を全部灯したときのファンファーレ。和音を 2 回重ねて、きらめきで締める。"""
+    t = timeline(2.2)
+    sound = np.zeros_like(t)
+    chords = [(0.0, [523.25, 659.25, 783.99]), (0.18, [698.46, 880.0, 1046.5]), (0.36, [783.99, 987.77, 1174.66, 1567.98])]
+    for start, notes in chords:
+        local = np.clip(t - start, 0, None)
+        gate = t >= start
+        decay = 0.9 if start > 0.3 else 0.2
+        for freq in notes:
+            sound += bell(local, freq) * envelope(local, 0.004, decay) * gate
+    sparkle_t = np.clip(t - 0.36, 0, None)
+    sparkle = bandpass(rng.normal(0, 1, len(t)), 5000, 12000) * envelope(sparkle_t, 0.02, 0.6) * (t > 0.36)
+    sound += sparkle / (np.std(sparkle) + 1e-9) * 0.25
+    write("port_lit.wav", fade_out(normalize(sound, 0.85)))
+
+
 if __name__ == "__main__":
     engine()
     squeal()
@@ -183,3 +235,7 @@ if __name__ == "__main__":
     combo()
     bank()
     crash()
+    lamp_on()
+    cone_hit()
+    drum_hit()
+    port_lit()
