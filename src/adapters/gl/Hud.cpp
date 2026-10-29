@@ -32,7 +32,7 @@ void drawMinimap(Renderer& renderer, const Track& track, const Car& car)
 {
     float size{190.0f};
     float x0{24.0f};
-    float y0{float(renderer.height) - size - 28.0f};
+    float y0{float(renderer.height()) - size - 28.0f};
     renderer.addQuad(x0, y0, x0 + size, y0 + size, 0.02f, 0.03f, 0.05f, 0.78f);
     float minX{track.samples[0].x};
     float maxX{minX};
@@ -123,19 +123,19 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     }
     hud.drawText(24, 116, 2.0f, line, 0.9f, 0.9f, 0.92f, 1);
 
-    hud.drawText(float(hud.width) - 140, 22, 2.0f, camera.modeName(), 0.8f, 0.84f, 0.88f, 1);
+    hud.drawText(float(hud.width()) - 140, 22, 2.0f, camera.modeName(), 0.8f, 0.84f, 0.88f, 1);
 
     if (showHelp)
     {
-        hud.drawText(24, float(hud.height) - 78, 1.7f,
+        hud.drawText(24, float(hud.height()) - 78, 1.7f,
                      "W/UP ACCEL  S/DOWN BRAKE  A/D STEER  R RESET  C CAMERA  P PAUSE", 0.9f, 0.92f, 0.94f, 1);
-        hud.drawText(24, float(hud.height) - 54, 1.7f,
+        hud.drawText(24, float(hud.height()) - 54, 1.7f,
                      "PAD: RT ACCEL  LT BRAKE  STICK STEER  Y CAMERA  BACK RESET  START PAUSE", 0.75f, 0.8f, 0.84f, 1);
     }
-    hud.drawText(float(hud.width) - 250, float(hud.height) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
+    hud.drawText(float(hud.width()) - 250, float(hud.height()) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
     if (session.paused())
     {
-        hud.drawText(float(hud.width) * 0.5f - 70, float(hud.height) * 0.45f, 5.0f, "PAUSE", 1, 0.95f, 0.9f, 1);
+        hud.drawText(float(hud.width()) * 0.5f - 70, float(hud.height()) * 0.45f, 5.0f, "PAUSE", 1, 0.95f, 0.9f, 1);
     }
     drawMinimap(renderer, session.track(), session.car());
     hud.flushHud();

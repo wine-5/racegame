@@ -198,36 +198,36 @@ int glyphIndex(char c)
 
 bool Renderer::init()
 {
-    glGenVertexArrays(1, &dummyVao);
-    worldProgram = linkProgram(WORLD_VS, WORLD_FS);
-    skyProgram = linkProgram(SKY_VS, SKY_FS);
-    hudProgram = linkProgram(HUD_VS, HUD_FS);
-    if (!worldProgram || !skyProgram || !hudProgram)
+    glGenVertexArrays(1, &m_dummyVao);
+    m_worldProgram = linkProgram(WORLD_VS, WORLD_FS);
+    m_skyProgram = linkProgram(SKY_VS, SKY_FS);
+    m_hudProgram = linkProgram(HUD_VS, HUD_FS);
+    if (!m_worldProgram || !m_skyProgram || !m_hudProgram)
     {
         return false;
     }
-    uViewProj = glGetUniformLocation(worldProgram, "uViewProj");
-    uModel = glGetUniformLocation(worldProgram, "uModel");
-    uCamPos = glGetUniformLocation(worldProgram, "uCamPos");
-    uOrtho = glGetUniformLocation(hudProgram, "uOrtho");
+    m_uViewProj = glGetUniformLocation(m_worldProgram, "uViewProj");
+    m_uModel = glGetUniformLocation(m_worldProgram, "uModel");
+    m_uCamPos = glGetUniformLocation(m_worldProgram, "uCamPos");
+    m_uOrtho = glGetUniformLocation(m_hudProgram, "uOrtho");
 
-    glGenVertexArrays(1, &hudVao);
-    glGenBuffers(1, &hudVbo);
-    glGenBuffers(1, &hudIbo);
-    glBindVertexArray(hudVao);
-    glBindBuffer(GL_ARRAY_BUFFER, hudVbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, hudIbo);
+    glGenVertexArrays(1, &m_hudVao);
+    glGenBuffers(1, &m_hudVbo);
+    glGenBuffers(1, &m_hudIbo);
+    glBindVertexArray(m_hudVao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_hudVbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_hudIbo);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(0));
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(2 * sizeof(float)));
-    glBindVertexArray(dummyVao);
+    glBindVertexArray(m_dummyVao);
 
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     // lookAt は左右を直すために鏡映になっている。巻き方向が反転するので、表の判定も合わせる。
     glFrontFace(GL_CW);
-    resize(width, height);
+    resize(m_width, m_height);
     return true;
 }
 
@@ -239,17 +239,17 @@ void Renderer::clearFrame()
 
 void Renderer::resize(int newWidth, int newHeight)
 {
-    width = newWidth > 0 ? newWidth : 1;
-    height = newHeight > 0 ? newHeight : 1;
-    glViewport(0, 0, width, height);
+    m_width = newWidth > 0 ? newWidth : 1;
+    m_height = newHeight > 0 ? newHeight : 1;
+    glViewport(0, 0, m_width, m_height);
 }
 
 void Renderer::drawSky()
 {
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
-    glUseProgram(skyProgram);
-    glBindVertexArray(dummyVao);
+    glUseProgram(m_skyProgram);
+    glBindVertexArray(m_dummyVao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
@@ -259,9 +259,9 @@ void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
 {
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
-    glUseProgram(worldProgram);
-    glUniformMatrix4fv(uViewProj, 1, GL_FALSE, viewProj.m);
-    glUniform3f(uCamPos, cameraPos.x, cameraPos.y, cameraPos.z);
+    glUseProgram(m_worldProgram);
+    glUniformMatrix4fv(m_uViewProj, 1, GL_FALSE, viewProj.m);
+    glUniform3f(m_uCamPos, cameraPos.x, cameraPos.y, cameraPos.z);
 }
 
 void Renderer::draw(const GpuMesh& mesh, const Mat4& model)
@@ -271,25 +271,25 @@ void Renderer::draw(const GpuMesh& mesh, const Mat4& model)
         return;
     }
     glBindVertexArray(mesh.vao);
-    glUniformMatrix4fv(uModel, 1, GL_FALSE, model.m);
+    glUniformMatrix4fv(m_uModel, 1, GL_FALSE, model.m);
     glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
 }
 
 void Renderer::beginHud()
 {
-    hudVerts.clear();
-    hudIndices.clear();
+    m_hudVerts.clear();
+    m_hudIndices.clear();
 }
 
 void Renderer::addQuad(float x0, float y0, float x1, float y1, float r, float g, float b, float a)
 {
-    unsigned base{static_cast<unsigned>(hudVerts.size() / 6)};
+    unsigned base{static_cast<unsigned>(m_hudVerts.size() / 6)};
     float verts[] = {
         x0, y0, r, g, b, a, x1, y0, r, g, b, a, x1, y1, r, g, b, a, x0, y1, r, g, b, a,
     };
-    hudVerts.insert(hudVerts.end(), verts, verts + 24);
+    m_hudVerts.insert(m_hudVerts.end(), verts, verts + 24);
     unsigned idx[]{base, base + 1, base + 2, base, base + 2, base + 3};
-    hudIndices.insert(hudIndices.end(), idx, idx + 6);
+    m_hudIndices.insert(m_hudIndices.end(), idx, idx + 6);
 }
 
 void Renderer::drawLine(float x0, float y0, float x1, float y1, float thickness, float r, float g, float b, float a)
@@ -305,14 +305,14 @@ void Renderer::drawLine(float x0, float y0, float x1, float y1, float thickness,
     dy /= len;
     float px{-dy * thickness * 0.5f};
     float py{dx * thickness * 0.5f};
-    unsigned base{static_cast<unsigned>(hudVerts.size() / 6)};
+    unsigned base{static_cast<unsigned>(m_hudVerts.size() / 6)};
     float verts[] = {
         x0 + px, y0 + py, r, g, b, a, x0 - px, y0 - py, r, g, b, a,
         x1 - px, y1 - py, r, g, b, a, x1 + px, y1 + py, r, g, b, a,
     };
-    hudVerts.insert(hudVerts.end(), verts, verts + 24);
+    m_hudVerts.insert(m_hudVerts.end(), verts, verts + 24);
     unsigned idx[]{base, base + 1, base + 2, base, base + 2, base + 3};
-    hudIndices.insert(hudIndices.end(), idx, idx + 6);
+    m_hudIndices.insert(m_hudIndices.end(), idx, idx + 6);
 }
 
 void Renderer::drawText(float x, float y, float scale, const char* text, float r, float g, float b, float a)
@@ -356,24 +356,24 @@ void Renderer::drawText(float x, float y, float scale, const char* text, float r
 
 void Renderer::flushHud()
 {
-    if (hudIndices.empty())
+    if (m_hudIndices.empty())
     {
         return;
     }
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glUseProgram(hudProgram);
-    Mat4 ortho{orthoTopLeft(float(width), float(height))};
-    glUniformMatrix4fv(uOrtho, 1, GL_FALSE, ortho.m);
-    glBindVertexArray(hudVao);
-    glBindBuffer(GL_ARRAY_BUFFER, hudVbo);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(hudVerts.size() * sizeof(float)), hudVerts.data(),
+    glUseProgram(m_hudProgram);
+    Mat4 ortho{orthoTopLeft(float(m_width), float(m_height))};
+    glUniformMatrix4fv(m_uOrtho, 1, GL_FALSE, ortho.m);
+    glBindVertexArray(m_hudVao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_hudVbo);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(m_hudVerts.size() * sizeof(float)), m_hudVerts.data(),
                  GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, hudIbo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(hudIndices.size() * sizeof(unsigned)),
-                 hudIndices.data(), GL_DYNAMIC_DRAW);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(hudIndices.size()), GL_UNSIGNED_INT, nullptr);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_hudIbo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(m_hudIndices.size() * sizeof(unsigned)),
+                 m_hudIndices.data(), GL_DYNAMIC_DRAW);
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_hudIndices.size()), GL_UNSIGNED_INT, nullptr);
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 }
@@ -402,7 +402,7 @@ GpuMesh Renderer::upload(const CpuMesh& mesh)
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), reinterpret_cast<void*>(6 * sizeof(float)));
     gpu.indexCount = static_cast<int>(mesh.indices.size());
-    glBindVertexArray(dummyVao);
+    glBindVertexArray(m_dummyVao);
     return gpu;
 }
 

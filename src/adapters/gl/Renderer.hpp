@@ -22,11 +22,9 @@ struct GpuMesh
 /**
  * @brief OpenGL の描画。空・3D のワールド・2D の HUD を描く
  */
-struct Renderer
+class Renderer
 {
-    int width{1280};
-    int height{720};
-
+public:
     /**
      * @brief シェーダーとバッファを作る
      * @details GL コンテキストを作ったあとに呼ぶ。
@@ -115,19 +113,28 @@ struct Renderer
      */
     GpuMesh upload(const CpuMesh& mesh);
 
-    unsigned worldProgram{};
-    unsigned skyProgram{};
-    unsigned hudProgram{};
-    unsigned dummyVao{};
-    unsigned hudVao{};
-    unsigned hudVbo{};
-    unsigned hudIbo{};
-    int uViewProj{-1};
-    int uModel{-1};
-    int uCamPos{-1};
-    int uOrtho{-1};
-    std::vector<float> hudVerts;
-    std::vector<unsigned> hudIndices;
+    /// 描画先の幅（ピクセル）
+    int width() const { return m_width; }
+
+    /// 描画先の高さ（ピクセル）
+    int height() const { return m_height; }
+
+private:
+    int m_width{1280};
+    int m_height{720};
+    unsigned m_worldProgram{};
+    unsigned m_skyProgram{};
+    unsigned m_hudProgram{};
+    unsigned m_dummyVao{};
+    unsigned m_hudVao{};
+    unsigned m_hudVbo{};
+    unsigned m_hudIbo{};
+    int m_uViewProj{-1};
+    int m_uModel{-1};
+    int m_uCamPos{-1};
+    int m_uOrtho{-1};
+    std::vector<float> m_hudVerts;
+    std::vector<unsigned> m_hudIndices;
 };
 
 }  // namespace adapters::gl
