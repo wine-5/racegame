@@ -43,6 +43,7 @@ target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 add_executable(racegame
     src/Main.cpp
     src/adapters/audio/AudioMixer.cpp
+    src/adapters/audio/DriftSound.cpp
     src/adapters/course/PortCourse.cpp
     src/adapters/course/PracticeCircle.cpp
     src/adapters/file/TrackFile.cpp
