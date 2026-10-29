@@ -30,9 +30,11 @@ public:
 
     /**
      * @brief 描くための板を追加する
+     * @details カメラのすぐ近くの煙は薄くする。煙の中にカメラが入ると画面が真っ白になるため。
      * @param out 追加先
+     * @param cameraPos カメラの位置
      */
-    void collect(std::vector<Billboard>& out) const;
+    void collect(std::vector<Billboard>& out, domain::Vec3 cameraPos) const;
 
 private:
     struct Particle

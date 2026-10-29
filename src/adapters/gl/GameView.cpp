@@ -88,7 +88,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     Vec3 cameraRight{normalize(cross(viewDir, Vec3{0, 1, 0}))};
     Vec3 cameraUp{cross(cameraRight, viewDir)};
     m_billboards.clear();
-    m_smoke.collect(m_billboards);
+    m_smoke.collect(m_billboards, m_camera.eye());
     m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
 
     drawHud(m_renderer, session, m_camera, m_showHelp);
