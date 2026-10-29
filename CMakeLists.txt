@@ -53,6 +53,7 @@ add_executable(racegame
     src/adapters/gl/GameView.cpp
     src/adapters/gl/Hud.cpp
     src/adapters/gl/PortScenery.cpp
+    src/adapters/gl/PostProcess.cpp
     src/adapters/gl/Renderer.cpp
     src/adapters/gl/Shader.cpp
     src/adapters/gl/SkidMarks.cpp
