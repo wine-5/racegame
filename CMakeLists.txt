@@ -36,6 +36,7 @@ add_library(racecore STATIC
     src/domain/DriftScore.cpp
     src/domain/LapTimer.cpp
     src/application/GameSession.cpp
+    src/application/OneButtonDriver.cpp
 )
 target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
