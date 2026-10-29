@@ -32,11 +32,12 @@ void GameSession::reset()
     m_car.reset(m_track);
     m_lap = LapTimer{};
     m_drift.reset();
-    m_driver.reset();
+    m_autoDriver.reset();
+    m_manualDriver.reset();
     m_lastInput = DriveInput{};
 }
 
-void GameSession::advance(double elapsedSec, bool driftButton)
+void GameSession::advance(double elapsedSec, const PlayerControls& controls)
 {
     if (elapsedSec > MAX_FRAME_SEC)
         elapsedSec = MAX_FRAME_SEC;
@@ -52,18 +53,20 @@ void GameSession::advance(double elapsedSec, bool driftButton)
     int guard{0};
     while (m_accumulator >= FIXED_STEP_SEC && guard < MAX_STEPS_PER_FRAME)
     {
-        step(driftButton);
+        step(controls);
         m_accumulator -= FIXED_STEP_SEC;
         ++guard;
     }
 }
 
-void GameSession::step(bool driftButton)
+void GameSession::step(const PlayerControls& controls)
 {
-    m_lastInput = m_driver.drive(m_car, m_track, driftButton, float(FIXED_STEP_SEC));
-    m_car.update(float(FIXED_STEP_SEC), m_lastInput, m_track);
-    m_lap.tick(m_car.ground.s, m_track.length, float(FIXED_STEP_SEC));
-    m_drift.update(m_car, float(FIXED_STEP_SEC));
+    const float dt{float(FIXED_STEP_SEC)};
+    m_lastInput = controls.autoSteer ? m_autoDriver.drive(m_car, m_track, controls.drift, dt)
+                                     : m_manualDriver.drive(m_car, controls, dt);
+    m_car.update(dt, m_lastInput, m_track);
+    m_lap.tick(m_car.ground.s, m_track.length, dt);
+    m_drift.update(m_car, dt);
 }
 
 }  // namespace application

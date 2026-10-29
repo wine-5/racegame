@@ -282,7 +282,7 @@ void SdlApp::frame()
     if (capturing)
     {
         elapsed = 1.0 / 60.0;
-        // 自動運転は常に効いている。--drift ならボタンを押し、--autopilot なら押さない
+        // 画面の保存では自動で運転する。--drift ならボタンを押し、--autopilot なら押さない
         input.drift = m_capture.autoDrive && m_frameCount >= CAPTURE_DRIFT_FROM;
     }
     if (elapsed > MAX_FRAME_SEC)
@@ -294,8 +294,19 @@ void SdlApp::frame()
         elapsed = 0;
     }
 
-    // タイトルの後ろでは、デモとしてずっとドリフトさせて見せる
-    m_session.advance(elapsed, m_screen == Screen::Playing ? input.drift : true);
+    application::PlayerControls controls{input.throttle, input.brake, input.steer, input.drift, false};
+    if (m_screen == Screen::Title)
+    {
+        // タイトルの後ろでは、デモとして自動でずっとドリフトさせて見せる
+        controls = application::PlayerControls{};
+        controls.drift = true;
+        controls.autoSteer = true;
+    }
+    else if (capturing)
+    {
+        controls.autoSteer = true;
+    }
+    m_session.advance(elapsed, controls);
     m_driftSound.update(m_session.car(), m_session.drift(), m_session.lastInput().throttle, float(elapsed),
                         m_session.paused());
 

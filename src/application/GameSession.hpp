@@ -1,6 +1,8 @@
 #pragma once
 
+#include "application/ManualDriver.hpp"
 #include "application/OneButtonDriver.hpp"
+#include "application/PlayerControls.hpp"
 #include "application/ports/ITrackSource.hpp"
 #include "domain/Car.hpp"
 #include "domain/DriftScore.hpp"
@@ -39,11 +41,11 @@ public:
     /**
      * @brief 1 フレーム分進める
      * @details たまった時間の分だけ固定ステップで進める。ポーズ中は進めない。
-     *          ステアとアクセルは自動で、プレイヤーはドリフトのボタンだけを押す。
+     *          ふだんはプレイヤーが WASD で運転する。controls.autoSteer なら、ステアとアクセルは自動になる。
      * @param elapsedSec 前のフレームからの経過時間（秒）
-     * @param driftButton ドリフトのボタンを押しているか
+     * @param controls プレイヤーの操作
      */
-    void advance(double elapsedSec, bool driftButton);
+    void advance(double elapsedSec, const PlayerControls& controls);
 
     /// 走っているコース
     const domain::Track& track() const { return m_track; }
@@ -61,13 +63,14 @@ public:
     const domain::DriveInput& lastInput() const { return m_lastInput; }
 
 private:
-    void step(bool driftButton);
+    void step(const PlayerControls& controls);
 
     domain::Track m_track;
     domain::Car m_car;
     domain::LapTimer m_lap;
     domain::DriftScore m_drift;
-    OneButtonDriver m_driver;
+    OneButtonDriver m_autoDriver;
+    ManualDriver m_manualDriver;
     domain::DriveInput m_lastInput;
     bool m_paused{};
     double m_accumulator{};
