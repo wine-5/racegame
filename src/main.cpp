@@ -3,6 +3,7 @@
 #include "adapters/gl/render.hpp"
 #include "adapters/gl/track_mesh.hpp"
 #include "domain/car.hpp"
+#include "domain/lap_timer.hpp"
 #include "domain/track.hpp"
 
 #include <SDL.h>
@@ -28,14 +29,6 @@ namespace {
 constexpr double kFixedStepSec = 1.0 / 60.0;
 constexpr double kMaxFrameSec = 0.25;
 
-struct Race {
-    int completed = 0;
-    bool timing = false;
-    float lap = 0;
-    float best = -1;
-    float prevS = -1;
-};
-
 struct Orbit {
     Vec3 eye{0, 8, -12};
     Vec3 look{0, 0, 0};
@@ -54,7 +47,7 @@ struct App {
     GpuMesh body;
     GpuMesh wheel;
     GpuMesh shadow;
-    Race race;
+    LapTimer race;
     Orbit camera;
     bool running = true;
     bool paused = false;
@@ -226,26 +219,8 @@ DriveInput readDrive(SDL_GameController* pad, PadPulse& pulse) {
 
 void resetRace(App& app) {
     app.car.reset(app.track);
-    app.race = Race{};
+    app.race = LapTimer{};
     app.camera.ready = false;
-}
-
-void tickRace(Race& race, float s, float length, float dt) {
-    if (race.prevS >= 0) {
-        float gap = (length - race.prevS) + s;
-        if (race.prevS > length * 0.5f && s < length * 0.5f && gap < 160.0f) {
-            if (race.timing) {
-                if (race.best < 0 || race.lap < race.best) {
-                    race.best = race.lap;
-                }
-                race.completed += 1;
-            }
-            race.timing = true;
-            race.lap = 0;
-        }
-    }
-    race.prevS = s;
-    race.lap += dt;
 }
 
 void updateCamera(App& app, float dt) {
@@ -431,7 +406,7 @@ void frame(void* userdata) {
         int guard = 0;
         while (app.accumulator >= kFixedStepSec && guard < 8) {
             app.car.update(float(kFixedStepSec), input, app.track);
-            tickRace(app.race, app.car.ground.s, app.track.length, float(kFixedStepSec));
+            app.race.tick(app.car.ground.s, app.track.length, float(kFixedStepSec));
             app.accumulator -= kFixedStepSec;
             ++guard;
         }

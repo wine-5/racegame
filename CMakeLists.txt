@@ -32,6 +32,7 @@ message(STATUS "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 add_library(racecore STATIC
     src/domain/track.cpp
     src/domain/car.cpp
+    src/domain/lap_timer.cpp
 )
 target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
