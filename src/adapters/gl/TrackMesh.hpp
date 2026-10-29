@@ -6,7 +6,12 @@
 namespace adapters::gl
 {
 
-// コースの見た目（路面、芝、縁石、壁、ピット、スタートライン）を作る。
+/**
+ * @brief コースの見た目を作る
+ * @details 路面、芝、縁石、壁、ピット、スタートライン。
+ * @param track コース
+ * @param mesh 作り先
+ */
 void buildTrackMesh(const domain::Track& track, CpuMesh& mesh);
 
 }  // namespace adapters::gl
