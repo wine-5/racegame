@@ -2,9 +2,7 @@
 #include "adapters/gl/car_mesh.hpp"
 #include "adapters/gl/render.hpp"
 #include "adapters/gl/track_mesh.hpp"
-#include "domain/car.hpp"
-#include "domain/lap_timer.hpp"
-#include "domain/track.hpp"
+#include "application/game_session.hpp"
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -26,7 +24,6 @@
 
 namespace {
 
-constexpr double kFixedStepSec = 1.0 / 60.0;
 constexpr double kMaxFrameSec = 0.25;
 
 struct Orbit {
@@ -41,18 +38,14 @@ struct App {
     SDL_GLContext gl = nullptr;
     SDL_GameController* pad = nullptr;
     Renderer renderer;
-    Track track;
-    Car car;
+    GameSession session;
     GpuMesh course;
     GpuMesh body;
     GpuMesh wheel;
     GpuMesh shadow;
-    LapTimer race;
     Orbit camera;
     bool running = true;
-    bool paused = false;
     bool showHelp = true;
-    double accumulator = 0;
     Uint64 prevCounter = 0;
 };
 
@@ -218,8 +211,7 @@ DriveInput readDrive(SDL_GameController* pad, PadPulse& pulse) {
 }
 
 void resetRace(App& app) {
-    app.car.reset(app.track);
-    app.race = LapTimer{};
+    app.session.reset();
     app.camera.ready = false;
 }
 
@@ -228,10 +220,10 @@ void updateCamera(App& app, float dt) {
     const float up[3] = {3.3f, 1.55f, 7.2f};
     const float ahead[3] = {9.0f, 6.0f, 14.0f};
     int mode = app.camera.mode;
-    Vec3 forward{std::sin(app.car.yaw), 0, std::cos(app.car.yaw)};
-    Vec3 eye = Vec3{app.car.x, app.car.y, app.car.z} - forward * back[mode] + Vec3{0, up[mode], 0};
-    Vec3 look = Vec3{app.car.x, app.car.y, app.car.z} + forward * ahead[mode] + Vec3{0, 1.15f, 0};
-    TrackPose under = app.track.query(eye.x, eye.z, app.car.y, app.car.ground.s);
+    Vec3 forward{std::sin(app.session.car().yaw), 0, std::cos(app.session.car().yaw)};
+    Vec3 eye = Vec3{app.session.car().x, app.session.car().y, app.session.car().z} - forward * back[mode] + Vec3{0, up[mode], 0};
+    Vec3 look = Vec3{app.session.car().x, app.session.car().y, app.session.car().z} + forward * ahead[mode] + Vec3{0, 1.15f, 0};
+    TrackPose under = app.session.track().query(eye.x, eye.z, app.session.car().y, app.session.car().ground.s);
     if (under.found && under.xzDist < 30.0f && eye.y < under.centerY + 0.8f) {
         eye.y = under.centerY + 0.8f;
     }
@@ -251,11 +243,11 @@ void drawMinimap(App& app) {
     float x0 = 24.0f;
     float y0 = float(app.renderer.height) - size - 28.0f;
     app.renderer.addQuad(x0, y0, x0 + size, y0 + size, 0.02f, 0.03f, 0.05f, 0.78f);
-    float minX = app.track.samples[0].x;
+    float minX = app.session.track().samples[0].x;
     float maxX = minX;
-    float minZ = app.track.samples[0].z;
+    float minZ = app.session.track().samples[0].z;
     float maxZ = minZ;
-    for (const TrackSample& sample : app.track.samples) {
+    for (const TrackSample& sample : app.session.track().samples) {
         minX = std::min(minX, sample.x);
         maxX = std::max(maxX, sample.x);
         minZ = std::min(minZ, sample.z);
@@ -266,10 +258,10 @@ void drawMinimap(App& app) {
     float span = std::max(maxX - minX, maxZ - minZ) * 1.12f;
     auto mapX = [&](float x) { return x0 + size * 0.5f + (x - midX) / span * (size - 18.0f); };
     auto mapY = [&](float z) { return y0 + size * 0.5f - (z - midZ) / span * (size - 18.0f); };
-    const int n = static_cast<int>(app.track.samples.size());
+    const int n = static_cast<int>(app.session.track().samples.size());
     for (int i = 0; i < n; ++i) {
-        const TrackSample& a = app.track.samples[i];
-        const TrackSample& b = app.track.samples[(i + 1) % n];
+        const TrackSample& a = app.session.track().samples[i];
+        const TrackSample& b = app.session.track().samples[(i + 1) % n];
         float r = 0.75f, g = 0.78f, bl = 0.82f;
         if (a.bridge || b.bridge) {
             r = 0.95f;
@@ -278,10 +270,10 @@ void drawMinimap(App& app) {
         }
         app.renderer.drawLine(mapX(a.x), mapY(a.z), mapX(b.x), mapY(b.z), 2.0f, r, g, bl, 1);
     }
-    float mx = mapX(app.car.x);
-    float my = mapY(app.car.z);
-    Vec3 nose{std::sin(app.car.yaw), 0, std::cos(app.car.yaw)};
-    Vec3 side{std::cos(app.car.yaw), 0, -std::sin(app.car.yaw)};
+    float mx = mapX(app.session.car().x);
+    float my = mapY(app.session.car().z);
+    Vec3 nose{std::sin(app.session.car().yaw), 0, std::cos(app.session.car().yaw)};
+    Vec3 side{std::cos(app.session.car().yaw), 0, -std::sin(app.session.car().yaw)};
     float nx = mx + nose.x * 9.0f;
     float ny = my - nose.z * 9.0f;
     float lx = mx - nose.x * 5.0f + side.x * 5.0f;
@@ -297,28 +289,28 @@ void drawHud(App& app) {
     Renderer& hud = app.renderer;
     hud.beginHud();
     char line[96];
-    int kmh = static_cast<int>(std::lround(app.car.speed * 3.6f));
+    int kmh = static_cast<int>(std::lround(app.session.car().speed * 3.6f));
     std::snprintf(line, sizeof(line), "%d KM/H", kmh);
     hud.drawText(24, 22, 4.0f, line, 0.95f, 0.96f, 0.98f, 1);
 
-    if (!app.race.timing) {
+    if (!app.session.lap().timing) {
         std::snprintf(line, sizeof(line), "OUT LAP");
     } else {
-        std::snprintf(line, sizeof(line), "LAP %d", app.race.completed + 1);
+        std::snprintf(line, sizeof(line), "LAP %d", app.session.lap().completed + 1);
     }
     hud.drawText(24, 64, 2.2f, line, 0.85f, 0.88f, 0.92f, 1);
-    formatTime(line, sizeof(line), app.race.lap);
+    formatTime(line, sizeof(line), app.session.lap().lap);
     hud.drawText(150, 64, 2.2f, line, 0.95f, 0.96f, 0.98f, 1);
 
     char best[32];
-    formatTime(best, sizeof(best), app.race.best);
+    formatTime(best, sizeof(best), app.session.lap().best);
     std::snprintf(line, sizeof(line), "BEST %s", best);
     hud.drawText(24, 90, 2.0f, line, 0.75f, 0.8f, 0.7f, 1);
 
-    int percent = static_cast<int>(app.car.ground.s / app.track.length * 100.0f);
-    const char* corner = app.track.nameOf(app.car.ground.nameId);
-    if (app.car.ground.corner > 0 && corner[0]) {
-        std::snprintf(line, sizeof(line), "T%d %s  %d%%", app.car.ground.corner, corner, percent);
+    int percent = static_cast<int>(app.session.car().ground.s / app.session.track().length * 100.0f);
+    const char* corner = app.session.track().nameOf(app.session.car().ground.nameId);
+    if (app.session.car().ground.corner > 0 && corner[0]) {
+        std::snprintf(line, sizeof(line), "T%d %s  %d%%", app.session.car().ground.corner, corner, percent);
     } else if (corner[0]) {
         std::snprintf(line, sizeof(line), "%s  %d%%", corner, percent);
     } else {
@@ -340,7 +332,7 @@ void drawHud(App& app) {
                      0.75f, 0.8f, 0.84f, 1);
     }
     hud.drawText(float(hud.width) - 250, float(hud.height) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
-    if (app.paused) {
+    if (app.session.paused()) {
         hud.drawText(float(hud.width) * 0.5f - 70, float(hud.height) * 0.45f, 5.0f, "PAUSE", 1, 0.95f, 0.9f, 1);
     }
     drawMinimap(app);
@@ -348,10 +340,10 @@ void drawHud(App& app) {
 }
 
 float carPitch(const App& app) {
-    Vec3 forward{std::sin(app.car.yaw), 0, std::cos(app.car.yaw)};
-    float preferS = app.car.ground.found ? app.car.ground.s : -1.0f;
-    TrackPose ahead = app.track.query(app.car.x + forward.x * 2.4f, app.car.z + forward.z * 2.4f, app.car.y, preferS);
-    TrackPose behind = app.track.query(app.car.x - forward.x * 2.4f, app.car.z - forward.z * 2.4f, app.car.y, preferS);
+    Vec3 forward{std::sin(app.session.car().yaw), 0, std::cos(app.session.car().yaw)};
+    float preferS = app.session.car().ground.found ? app.session.car().ground.s : -1.0f;
+    TrackPose ahead = app.session.track().query(app.session.car().x + forward.x * 2.4f, app.session.car().z + forward.z * 2.4f, app.session.car().y, preferS);
+    TrackPose behind = app.session.track().query(app.session.car().x - forward.x * 2.4f, app.session.car().z - forward.z * 2.4f, app.session.car().y, preferS);
     if (!ahead.found || !behind.found) {
         return 0;
     }
@@ -370,7 +362,7 @@ void frame(void* userdata) {
             if (code == SDL_SCANCODE_ESCAPE) app.running = false;
             else if (code == SDL_SCANCODE_R) reset = true;
             else if (code == SDL_SCANCODE_C) app.camera.mode = (app.camera.mode + 1) % 3;
-            else if (code == SDL_SCANCODE_P) app.paused = !app.paused;
+            else if (code == SDL_SCANCODE_P) app.session.togglePause();
             else if (code == SDL_SCANCODE_H) app.showHelp = !app.showHelp;
         } else if (event.type == SDL_CONTROLLERDEVICEADDED) {
             openPad(app);
@@ -380,14 +372,14 @@ void frame(void* userdata) {
             app.pad = nullptr;
         } else if (event.type == SDL_CONTROLLERBUTTONDOWN) {
             if (event.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) reset = true;
-            else if (event.cbutton.button == SDL_CONTROLLER_BUTTON_START) app.paused = !app.paused;
+            else if (event.cbutton.button == SDL_CONTROLLER_BUTTON_START) app.session.togglePause();
             else if (event.cbutton.button == SDL_CONTROLLER_BUTTON_Y) app.camera.mode = (app.camera.mode + 1) % 3;
         }
     }
     PadPulse padPulse;
     DriveInput input = readDrive(app.pad, padPulse);
     if (padPulse.reset) reset = true;
-    if (padPulse.pause) app.paused = !app.paused;
+    if (padPulse.pause) app.session.togglePause();
     if (padPulse.camera) app.camera.mode = (app.camera.mode + 1) % 3;
     if (reset) {
         resetRace(app);
@@ -399,18 +391,7 @@ void frame(void* userdata) {
     if (elapsed > kMaxFrameSec) elapsed = kMaxFrameSec;
     if (elapsed < 0) elapsed = 0;
 
-    if (app.paused) {
-        app.accumulator = 0;
-    } else {
-        app.accumulator += elapsed;
-        int guard = 0;
-        while (app.accumulator >= kFixedStepSec && guard < 8) {
-            app.car.update(float(kFixedStepSec), input, app.track);
-            app.race.tick(app.car.ground.s, app.track.length, float(kFixedStepSec));
-            app.accumulator -= kFixedStepSec;
-            ++guard;
-        }
-    }
+    app.session.advance(elapsed, input);
     updateCamera(app, float(elapsed));
 
     int drawableW = 0;
@@ -427,20 +408,20 @@ void frame(void* userdata) {
 
     Mat4 identity;
     app.renderer.draw(app.course, identity);
-    Mat4 shadow = mul(translation(app.car.x, app.car.y + 0.08f, app.car.z), rotationY(app.car.yaw));
+    Mat4 shadow = mul(translation(app.session.car().x, app.session.car().y + 0.08f, app.session.car().z), rotationY(app.session.car().yaw));
     app.renderer.draw(app.shadow, shadow);
 
     float pitch = carPitch(app);
-    float roll = std::atan(app.car.ground.cross);
-    Mat4 model = carModelMatrix(app.car, pitch, roll);
+    float roll = std::atan(app.session.car().ground.cross);
+    Mat4 model = carModelMatrix(app.session.car(), pitch, roll);
     app.renderer.draw(app.body, model);
     const float wheelX = 0.82f;
     const float wheelZ[2] = {1.42f, -1.38f};
-    const float steerForWheel[2] = {app.car.steerAngle, 0};
+    const float steerForWheel[2] = {app.session.car().steerAngle, 0};
     for (int i = 0; i < 2; ++i) {
         for (int side = -1; side <= 1; side += 2) {
             Mat4 place = mul(translation(float(side) * wheelX, 0.34f, wheelZ[i]),
-                             mul(rotationY(steerForWheel[i]), rotationX(app.car.wheelSpin)));
+                             mul(rotationY(steerForWheel[i]), rotationX(app.session.car().wheelSpin)));
             app.renderer.draw(app.wheel, mul(model, place));
         }
     }
@@ -559,15 +540,14 @@ bool initGl(App& app) {
 
 int main(int argc, char** argv) {
     bool test = argc > 1 && std::strcmp(argv[1], "--self-test") == 0;
-    Track track;
+    GameSession session;
     TrackFile trackFile(TrackFile::findDefaultPath());
-    TrackSource& trackSource = trackFile;
-    if (!trackSource.load(track)) {
+    if (!session.start(trackFile)) {
         std::fprintf(stderr, "コースを読めません: %s\n", trackFile.path().c_str());
         return 1;
     }
     if (test) {
-        return selfTest(track);
+        return selfTest(session.track());
     }
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
@@ -584,14 +564,14 @@ int main(int argc, char** argv) {
     }
 
     App app;
-    app.track = std::move(track);
+    app.session = std::move(session);
     if (!initGl(app)) {
         SDL_Quit();
         return 1;
     }
     openPad(app);
     CpuMesh course;
-    buildTrackMesh(app.track, course);
+    buildTrackMesh(app.session.track(), course);
     app.course = app.renderer.upload(course);
     CpuMesh body;
     CpuMesh wheel;
@@ -602,7 +582,6 @@ int main(int argc, char** argv) {
     app.body = app.renderer.upload(body);
     app.wheel = app.renderer.upload(wheel);
     app.shadow = app.renderer.upload(shadow);
-    app.car.reset(app.track);
     app.prevCounter = SDL_GetPerformanceCounter();
 
 #ifdef __EMSCRIPTEN__
