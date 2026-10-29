@@ -34,8 +34,8 @@ private:
     domain::Track m_track;
     domain::Car m_car;
     domain::LapTimer m_lap;
-    bool m_paused = false;
-    double m_accumulator = 0;
+    bool m_paused{};
+    double m_accumulator{};
 };
 
 }  // namespace application

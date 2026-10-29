@@ -60,14 +60,14 @@ struct Orbit
 {
     Vec3 eye{0, 8, -12};
     Vec3 look{0, 0, 0};
-    bool ready = false;
-    int mode = 0;
+    bool ready{};
+    int mode{};
 };
 
 struct App
 {
-    SDL_Window* window = nullptr;
-    SDL_GLContext gl = nullptr;
+    SDL_Window* window{};
+    SDL_GLContext gl{};
     SdlInput input;
     Renderer renderer;
     GameSession session;
@@ -76,9 +76,9 @@ struct App
     GpuMesh wheel;
     GpuMesh shadow;
     Orbit camera;
-    bool running = true;
-    bool showHelp = true;
-    Uint64 prevCounter = 0;
+    bool running{true};
+    bool showHelp{true};
+    Uint64 prevCounter{};
 };
 
 void formatTime(char* buf, int size, float seconds)

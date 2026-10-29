@@ -10,44 +10,44 @@ namespace domain
 
 struct TrackPose
 {
-    bool found = false;
-    float s = 0;
-    float lateral = 0;  // 右が正
-    float centerY = 0;
-    float cross = 0;  // 右方向 1m あたりの高さ
-    float yaw = 0;
-    float rightX = 1;
-    float rightZ = 0;
-    float xzDist = 0;
-    int corner = 0;
-    int nameId = -1;
+    bool found{};
+    float s{};
+    float lateral{};  // 右が正
+    float centerY{};
+    float cross{};  // 右方向 1m あたりの高さ
+    float yaw{};
+    float rightX{1};
+    float rightZ{};
+    float xzDist{};
+    int corner{};
+    int nameId{-1};
 };
 
 struct TrackSample
 {
-    float x = 0;
-    float z = 0;
-    float y = 0;
-    float cross = 0;
-    float s = 0;
-    int corner = 0;
-    int nameId = -1;
-    bool bridge = false;
+    float x{};
+    float z{};
+    float y{};
+    float cross{};
+    float s{};
+    int corner{};
+    int nameId{-1};
+    bool bridge{};
 };
 
 // 鈴鹿サーキット。中心線は OSM、高さは国土地理院の標高。
 struct Track
 {
-    float originLat = 0;
-    float originLon = 0;
-    float halfWidth = 6.5f;
-    float curbWidth = 0.8f;
-    float runoff = 8.0f;
-    float length = 0;
-    float spawnX = 0;
-    float spawnY = 0;
-    float spawnZ = 0;
-    float spawnYaw = 0;
+    float originLat{};
+    float originLon{};
+    float halfWidth{6.5f};
+    float curbWidth{0.8f};
+    float runoff{8.0f};
+    float length{};
+    float spawnX{};
+    float spawnY{};
+    float spawnZ{};
+    float spawnYaw{};
     std::vector<TrackSample> samples;
     std::vector<std::string> names;
     std::vector<Vec3> pit;  // ピットレーンの中心線。走行には使わない

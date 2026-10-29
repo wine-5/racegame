@@ -11,11 +11,11 @@ namespace adapters::sdl
 struct InputFrame
 {
     domain::DriveInput drive;
-    bool quit = false;
-    bool reset = false;
-    bool pause = false;
-    bool camera = false;
-    bool help = false;
+    bool quit{};
+    bool reset{};
+    bool pause{};
+    bool camera{};
+    bool help{};
 };
 
 // キーボード・ゲームパッド（ブラウザでは Gamepad API）を読んで InputFrame にする。
@@ -28,7 +28,7 @@ public:
     InputFrame poll();
 
 private:
-    SDL_GameController* m_pad = nullptr;
+    SDL_GameController* m_pad{};
 };
 
 }  // namespace adapters::sdl

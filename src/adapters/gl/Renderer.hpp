@@ -10,16 +10,16 @@ namespace adapters::gl
 
 struct GpuMesh
 {
-    unsigned vao = 0;
-    unsigned vbo = 0;
-    unsigned ibo = 0;
-    int indexCount = 0;
+    unsigned vao{};
+    unsigned vbo{};
+    unsigned ibo{};
+    int indexCount{};
 };
 
 struct Renderer
 {
-    int width = 1280;
-    int height = 720;
+    int width{1280};
+    int height{720};
 
     bool init();
     void resize(int width, int height);
@@ -34,17 +34,17 @@ struct Renderer
     void flushHud();
     GpuMesh upload(const CpuMesh& mesh);
 
-    unsigned worldProgram = 0;
-    unsigned skyProgram = 0;
-    unsigned hudProgram = 0;
-    unsigned dummyVao = 0;
-    unsigned hudVao = 0;
-    unsigned hudVbo = 0;
-    unsigned hudIbo = 0;
-    int uViewProj = -1;
-    int uModel = -1;
-    int uCamPos = -1;
-    int uOrtho = -1;
+    unsigned worldProgram{};
+    unsigned skyProgram{};
+    unsigned hudProgram{};
+    unsigned dummyVao{};
+    unsigned hudVao{};
+    unsigned hudVbo{};
+    unsigned hudIbo{};
+    int uViewProj{-1};
+    int uModel{-1};
+    int uCamPos{-1};
+    int uOrtho{-1};
     std::vector<float> hudVerts;
     std::vector<unsigned> hudIndices;
 };
