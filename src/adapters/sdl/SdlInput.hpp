@@ -7,13 +7,16 @@ namespace adapters::sdl
 
 /**
  * @brief 1 フレーム分の入力
- * @details ドリフトのボタン（押している間ずっと立つ）と、押した瞬間だけ立つ操作。
+ * @details 運転の操作（押している間ずっと効く）と、押した瞬間だけ立つ操作。
  */
 struct InputFrame
 {
-    bool drift{};  // ドリフトのボタンを押しているか
-    bool quit{};   // ウィンドウを閉じた
-    bool back{};   // ESC。遊んでいるときはタイトルへ戻る
+    float throttle{};  // アクセル（0..1）
+    float brake{};     // ブレーキ（0..1）
+    float steer{};     // ステア（-1..1）。左が負
+    bool drift{};      // ドリフトのボタンを押しているか
+    bool quit{};       // ウィンドウを閉じた
+    bool back{};       // ESC。遊んでいるときはタイトルへ戻る
     bool reset{};
     bool pause{};
     bool camera{};
@@ -24,7 +27,8 @@ struct InputFrame
 
 /**
  * @brief キーボード・マウス・ゲームパッドを読んで InputFrame にする
- * @details ドリフトのボタンは Space、マウスの左ボタン（タッチ）、パッドの A か RT。
+ * @details 運転は W / S / A / D（矢印キーも可）、ドリフトは Space かマウスの左ボタン（タッチ）。
+ *          パッドは左スティックでステア、RT でアクセル、LT でブレーキ、A でドリフト。
  *          ブラウザではパッドを Gamepad API から読む。
  */
 class SdlInput
