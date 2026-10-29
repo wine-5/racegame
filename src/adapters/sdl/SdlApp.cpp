@@ -310,6 +310,7 @@ void SdlApp::frame()
     m_session.advance(elapsed, controls);
     m_driftSound.update(m_session.car(), m_session.drift(), m_session.lastInput().throttle, float(elapsed),
                         m_session.paused());
+    m_driftSound.updateWorld(m_session.lamps(), m_session.props());
 
     fitCanvas();
     int drawableW{};

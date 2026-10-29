@@ -3,6 +3,8 @@
 #include "adapters/audio/AudioMixer.hpp"
 #include "domain/Car.hpp"
 #include "domain/DriftScore.hpp"
+#include "domain/Props.hpp"
+#include "domain/StreetLamps.hpp"
 
 namespace adapters::audio
 {
@@ -11,7 +13,7 @@ namespace adapters::audio
  * @brief 車とドリフトの状態から、鳴らす音を決める
  * @details エンジンは速度から自動でギアを決めて回転数を出し、その高さで鳴らす。シフトアップで回転が落ちる。
  *          スキール音は滑り角が深いほど大きく高くなる。ドリフトの連続の始まり・倍率アップ・得点の確定・
- *          壁への衝突で効果音を鳴らす。
+ *          壁への衝突で効果音を鳴らす。街灯が灯ったときと、小物を弾いたときにも鳴らす。
  */
 class DriftSound
 {
@@ -32,6 +34,14 @@ public:
      */
     void update(const domain::Car& car, const domain::DriftScore& drift, float throttle, float dt, bool paused);
 
+    /**
+     * @brief 街灯と小物の変化に合わせて効果音を鳴らす
+     * @details 街灯は灯した倍率が高いほど高い音で鳴らす。
+     * @param lamps 街灯の状態
+     * @param props 小物の状態
+     */
+    void updateWorld(const domain::StreetLamps& lamps, const domain::Props& props);
+
     /// 前の状態を忘れる。ステージを変えたときやリセットのあとに呼ぶ
     void reset();
 
@@ -48,6 +58,9 @@ private:
     int m_lastMultiplier{1};
     float m_lastSinceResult{1e9f};
     bool m_wasHitWall{};
+    int m_lastIgnitions{};
+    int m_lastHits{};
+    float m_lastSinceAllLit{1e9f};
     float m_crashCooldown{};
 };
 

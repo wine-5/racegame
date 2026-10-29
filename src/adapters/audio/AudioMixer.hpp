@@ -32,6 +32,10 @@ enum class Effect
     Combo,
     Bank,
     Crash,
+    LampOn,   // 街灯が灯った
+    ConeHit,  // パイロンを弾いた
+    DrumHit,  // ドラム缶を弾いた
+    PortLit,  // 1 周で街灯を全部灯した
     Count
 };
 

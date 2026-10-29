@@ -104,6 +104,8 @@ bool SdlAudio::open()
         {"engine_loop.wav", true, int(Loop::Engine)},        {"squeal_loop.wav", true, int(Loop::Squeal)},
         {"drift_start.wav", false, int(Effect::DriftStart)}, {"combo_up.wav", false, int(Effect::Combo)},
         {"drift_bank.wav", false, int(Effect::Bank)},        {"crash.wav", false, int(Effect::Crash)},
+        {"lamp_on.wav", false, int(Effect::LampOn)},         {"cone_hit.wav", false, int(Effect::ConeHit)},
+        {"drum_hit.wav", false, int(Effect::DrumHit)},       {"port_lit.wav", false, int(Effect::PortLit)},
     };
     bool ok{true};
     for (const Entry& entry : entries)

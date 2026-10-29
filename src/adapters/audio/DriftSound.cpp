@@ -125,4 +125,37 @@ void DriftSound::update(const domain::Car& car, const DriftScore& drift, float t
     m_wasHitWall = car.hitWall;
 }
 
+void DriftSound::updateWorld(const domain::StreetLamps& lamps, const domain::Props& props)
+{
+    // 数が減ったのはステージを変えたとき。鳴らさずに合わせる
+    if (lamps.ignitions() > m_lastIgnitions)
+    {
+        // 灯ったばかりの街灯のうち、いちばん高い倍率の音で 1 回鳴らす（1 段で全音）
+        int tier{1};
+        for (const domain::StreetLamp& lamp : lamps.lamps())
+        {
+            if (lamp.lit && lamp.litAge < 0.1f)
+            {
+                tier = std::max(tier, lamp.tier);
+            }
+        }
+        m_mixer.play(Effect::LampOn, 0.45f, std::pow(2.0f, float(tier - 1) * 2.0f / 12.0f));
+    }
+    m_lastIgnitions = lamps.ignitions();
+
+    if (props.hits() > m_lastHits)
+    {
+        bool cone{props.lastHitKind() == domain::PropKind::Cone};
+        float gain{std::clamp(props.lastHitSpeed() / 25.0f, 0.35f, 1.0f)};
+        m_mixer.play(cone ? Effect::ConeHit : Effect::DrumHit, gain * (cone ? 0.7f : 0.8f), 0.92f + 0.16f * gain);
+    }
+    m_lastHits = props.hits();
+
+    if (lamps.sinceAllLit() < m_lastSinceAllLit)
+    {
+        m_mixer.play(Effect::PortLit, 0.9f, 1.0f);
+    }
+    m_lastSinceAllLit = lamps.sinceAllLit();
+}
+
 }  // namespace adapters::audio
