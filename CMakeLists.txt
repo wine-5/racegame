@@ -32,6 +32,7 @@ message(STATUS "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 add_library(racecore STATIC
     src/domain/Track.cpp
     src/domain/Car.cpp
+    src/domain/CourseBuilder.cpp
     src/domain/DriftScore.cpp
     src/domain/LapTimer.cpp
     src/application/GameSession.cpp
