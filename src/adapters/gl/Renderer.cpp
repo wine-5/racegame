@@ -14,6 +14,15 @@
 #include <GL/glext.h>
 #endif
 
+namespace adapters::gl
+{
+
+using domain::dot;
+using domain::Mat4;
+using domain::normalize;
+using domain::orthoTopLeft;
+using domain::Vec3;
+
 namespace
 {
 
@@ -396,3 +405,5 @@ GpuMesh Renderer::upload(const CpuMesh& mesh)
     glBindVertexArray(dummyVao);
     return gpu;
 }
+
+}  // namespace adapters::gl

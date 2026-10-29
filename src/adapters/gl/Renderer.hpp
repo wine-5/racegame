@@ -5,6 +5,9 @@
 
 #include <vector>
 
+namespace adapters::gl
+{
+
 struct GpuMesh
 {
     unsigned vao = 0;
@@ -22,8 +25,8 @@ struct Renderer
     void resize(int width, int height);
     void clearFrame();
     void drawSky();
-    void beginWorld(const Mat4& viewProj, Vec3 cameraPos);
-    void draw(const GpuMesh& mesh, const Mat4& model);
+    void beginWorld(const domain::Mat4& viewProj, domain::Vec3 cameraPos);
+    void draw(const GpuMesh& mesh, const domain::Mat4& model);
     void beginHud();
     void addQuad(float x0, float y0, float x1, float y1, float r, float g, float b, float a);
     void drawLine(float x0, float y0, float x1, float y1, float thickness, float r, float g, float b, float a);
@@ -45,3 +48,5 @@ struct Renderer
     std::vector<float> hudVerts;
     std::vector<unsigned> hudIndices;
 };
+
+}  // namespace adapters::gl

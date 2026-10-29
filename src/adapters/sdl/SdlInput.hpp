@@ -4,10 +4,13 @@
 
 #include <SDL.h>
 
+namespace adapters::sdl
+{
+
 // 1 フレーム分の入力。運転の入力と、押した瞬間だけ立つ操作。
 struct InputFrame
 {
-    DriveInput drive;
+    domain::DriveInput drive;
     bool quit = false;
     bool reset = false;
     bool pause = false;
@@ -27,3 +30,5 @@ public:
 private:
     SDL_GameController* pad_ = nullptr;
 };
+
+}  // namespace adapters::sdl

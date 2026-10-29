@@ -8,6 +8,12 @@
 #include <emscripten/html5.h>
 #endif
 
+namespace adapters::sdl
+{
+
+using domain::clampf;
+using domain::DriveInput;
+
 namespace
 {
 
@@ -253,3 +259,5 @@ InputFrame SdlInput::poll()
     frame.camera = frame.camera || padPulse.camera;
     return frame;
 }
+
+}  // namespace adapters::sdl

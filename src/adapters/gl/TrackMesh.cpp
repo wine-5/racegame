@@ -3,6 +3,15 @@
 #include <algorithm>
 #include <cmath>
 
+namespace adapters::gl
+{
+
+using domain::cross;
+using domain::normalize;
+using domain::Track;
+using domain::TrackSample;
+using domain::Vec3;
+
 namespace
 {
 
@@ -283,3 +292,5 @@ void buildTrackMesh(const Track& track, CpuMesh& mesh)
     addPit(mesh, track.pit);
     addStartLine(mesh, track);
 }
+
+}  // namespace adapters::gl

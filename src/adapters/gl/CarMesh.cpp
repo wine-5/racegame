@@ -2,6 +2,16 @@
 
 #include <cmath>
 
+namespace adapters::gl
+{
+
+using domain::basis;
+using domain::Car;
+using domain::cross;
+using domain::Mat4;
+using domain::normalize;
+using domain::Vec3;
+
 void buildCarBody(CpuMesh& mesh)
 {
     const Vec3 red{0.72f, 0.08f, 0.09f};
@@ -71,3 +81,5 @@ Mat4 carModelMatrix(const Car& car, float pitch, float roll)
     Vec3 up = normalize(cross(forward, right));
     return basis({car.x, car.y, car.z}, right, up, forward);
 }
+
+}  // namespace adapters::gl

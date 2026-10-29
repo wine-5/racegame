@@ -6,13 +6,16 @@
 #include <utility>
 #include <vector>
 
+namespace adapters::gl
+{
+
 // 頂点は xyz + 法線 + 色。インデックスは三角形。
 struct CpuMesh
 {
     std::vector<float> vertices;
     std::vector<std::uint32_t> indices;
 
-    void addVertex(Vec3 p, Vec3 n, Vec3 c)
+    void addVertex(domain::Vec3 p, domain::Vec3 n, domain::Vec3 c)
     {
         vertices.insert(vertices.end(), {p.x, p.y, p.z, n.x, n.y, n.z, c.x, c.y, c.z});
     }
@@ -20,7 +23,7 @@ struct CpuMesh
     void addRawTriangle(std::uint32_t a, std::uint32_t b, std::uint32_t c) { indices.insert(indices.end(), {a, b, c}); }
 
     // a,b,c,d は四角の周囲。法線 n と逆向きなら巻きを直す。
-    void addQuad(Vec3 a, Vec3 b, Vec3 c, Vec3 d, Vec3 n, Vec3 color)
+    void addQuad(domain::Vec3 a, domain::Vec3 b, domain::Vec3 c, domain::Vec3 d, domain::Vec3 n, domain::Vec3 color)
     {
         if (dot(cross(b - a, c - a), n) < 0.0f)
         {
@@ -35,7 +38,7 @@ struct CpuMesh
         addRawTriangle(base, base + 2, base + 3);
     }
 
-    void addTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 n, Vec3 color)
+    void addTriangle(domain::Vec3 a, domain::Vec3 b, domain::Vec3 c, domain::Vec3 n, domain::Vec3 color)
     {
         if (dot(cross(b - a, c - a), n) < 0.0f)
         {
@@ -48,9 +51,9 @@ struct CpuMesh
         addRawTriangle(base, base + 1, base + 2);
     }
 
-    void addBox(Vec3 mn, Vec3 mx, Vec3 color)
+    void addBox(domain::Vec3 mn, domain::Vec3 mx, domain::Vec3 color)
     {
-        Vec3 p[8] = {
+        domain::Vec3 p[8] = {
             {mn.x, mn.y, mn.z}, {mx.x, mn.y, mn.z}, {mx.x, mx.y, mn.z}, {mn.x, mx.y, mn.z},
             {mn.x, mn.y, mx.z}, {mx.x, mn.y, mx.z}, {mx.x, mx.y, mx.z}, {mn.x, mx.y, mx.z},
         };
@@ -62,3 +65,5 @@ struct CpuMesh
         addQuad(p[0], p[3], p[2], p[1], {0, 0, -1}, color);
     }
 };
+
+}  // namespace adapters::gl

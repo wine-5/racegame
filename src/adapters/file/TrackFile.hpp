@@ -4,8 +4,11 @@
 
 #include <string>
 
+namespace adapters::file
+{
+
 // assets/track/*.txt のテキスト形式からコースを読む。
-class TrackFile : public TrackSource
+class TrackFile : public application::ports::TrackSource
 {
 public:
     explicit TrackFile(std::string path);
@@ -13,9 +16,11 @@ public:
     // 実行場所（build-native/、ブラウザの仮想ファイルシステム）によってパスが変わるので探す。
     static std::string findDefaultPath();
 
-    bool load(Track& track) override;
+    bool load(domain::Track& track) override;
     const std::string& path() const { return path_; }
 
 private:
     std::string path_;
 };
+
+}  // namespace adapters::file

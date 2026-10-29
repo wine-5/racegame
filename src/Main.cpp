@@ -26,6 +26,34 @@
 namespace
 {
 
+using adapters::file::TrackFile;
+using adapters::gl::buildCarBody;
+using adapters::gl::buildCarShadow;
+using adapters::gl::buildCarWheel;
+using adapters::gl::buildTrackMesh;
+using adapters::gl::carModelMatrix;
+using adapters::gl::CpuMesh;
+using adapters::gl::GpuMesh;
+using adapters::gl::Renderer;
+using adapters::sdl::InputFrame;
+using adapters::sdl::SdlInput;
+using application::GameSession;
+using domain::Car;
+using domain::clampf;
+using domain::DriveInput;
+using domain::lookAt;
+using domain::Mat4;
+using domain::mul;
+using domain::perspective;
+using domain::rotationX;
+using domain::rotationY;
+using domain::Track;
+using domain::TrackPose;
+using domain::TrackSample;
+using domain::translation;
+using domain::Vec3;
+using domain::wrapPi;
+
 constexpr double kMaxFrameSec = 0.25;
 
 struct Orbit

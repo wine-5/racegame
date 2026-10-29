@@ -2,6 +2,9 @@
 
 #include <cmath>
 
+namespace domain
+{
+
 namespace
 {
 
@@ -158,3 +161,5 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
     y = ground.centerY + bankLat * ground.cross;
     onAsphalt = std::fabs(ground.lateral) <= track.halfWidth + 0.15f;
 }
+
+}  // namespace domain

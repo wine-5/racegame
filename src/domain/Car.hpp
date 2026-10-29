@@ -2,6 +2,9 @@
 
 #include "domain/Track.hpp"
 
+namespace domain
+{
+
 struct DriveInput
 {
     float throttle = 0;  // 0..1
@@ -28,3 +31,5 @@ struct Car
     // グリップしたまま進む。ドリフトの課題ではこの関数を差し替える。
     void stepGrip(float dt);
 };
+
+}  // namespace domain

@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 
+namespace domain
+{
+
 struct TrackPose
 {
     bool found = false;
@@ -56,3 +59,5 @@ struct Track
     float wallLateral() const { return halfWidth + curbWidth + runoff; }
     const char* nameOf(int nameId) const;
 };
+
+}  // namespace domain

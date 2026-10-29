@@ -2,6 +2,9 @@
 
 #include <cmath>
 
+namespace domain
+{
+
 bool Track::finalize()
 {
     if (samples.size() < 16)
@@ -92,3 +95,5 @@ const char* Track::nameOf(int nameId) const
     }
     return names[nameId].c_str();
 }
+
+}  // namespace domain

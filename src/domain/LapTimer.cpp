@@ -1,5 +1,8 @@
 #include "domain/LapTimer.hpp"
 
+namespace domain
+{
+
 void LapTimer::tick(float s, float length, float dt)
 {
     if (prevS >= 0)
@@ -22,3 +25,5 @@ void LapTimer::tick(float s, float length, float dt)
     prevS = s;
     lap += dt;
 }
+
+}  // namespace domain

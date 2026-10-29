@@ -2,6 +2,9 @@
 
 #include <cmath>
 
+namespace domain
+{
+
 // 右手系。x が東、y が上、z が北。yaw 0 は +z を向き、正の yaw は右（時計回り）。
 
 struct Vec3
@@ -198,3 +201,5 @@ inline Mat4 basis(Vec3 pos, Vec3 right, Vec3 up, Vec3 forward)
     r.m[14] = pos.z;
     return r;
 }
+
+}  // namespace domain

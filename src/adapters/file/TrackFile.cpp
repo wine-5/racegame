@@ -4,6 +4,13 @@
 #include <sstream>
 #include <utility>
 
+namespace adapters::file
+{
+
+using domain::Track;
+using domain::TrackSample;
+using domain::Vec3;
+
 TrackFile::TrackFile(std::string path) : path_(std::move(path))
 {
 }
@@ -144,3 +151,5 @@ bool TrackFile::load(Track& track)
 
     return track.finalize();
 }
+
+}  // namespace adapters::file

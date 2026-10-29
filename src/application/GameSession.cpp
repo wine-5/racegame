@@ -1,5 +1,13 @@
 #include "application/GameSession.hpp"
 
+namespace application
+{
+
+using domain::DriveInput;
+using domain::LapTimer;
+using domain::Track;
+using ports::TrackSource;
+
 namespace
 {
 
@@ -52,3 +60,5 @@ void GameSession::step(const DriveInput& input)
     car_.update(float(kFixedStepSec), input, track_);
     lap_.tick(car_.ground.s, track_.length, float(kFixedStepSec));
 }
+
+}  // namespace application
