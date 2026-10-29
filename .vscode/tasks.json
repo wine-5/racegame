@@ -19,9 +19,10 @@
       "problemMatcher": {
         "owner": "http-server",
         "pattern": { "regexp": "^__never_matches__$" },
+        // 起動した時点で「準備中」とし、Serving HTTP が出たら準備完了とする
         "background": {
-          "activesBegin": ".",
-          "beginsPattern": ".",
+          "activeBegin": true,
+          "beginsPattern": "^__never_matches__$",
           "endsPattern": "Serving HTTP"
         }
       }
