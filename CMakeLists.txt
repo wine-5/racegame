@@ -43,6 +43,7 @@ add_executable(racegame
     src/adapters/file/TrackFile.cpp
     src/adapters/gl/CarMesh.cpp
     src/adapters/gl/ChaseCamera.cpp
+    src/adapters/gl/GameView.cpp
     src/adapters/gl/Hud.cpp
     src/adapters/gl/Renderer.cpp
     src/adapters/gl/TrackMesh.cpp

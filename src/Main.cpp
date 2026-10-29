@@ -1,9 +1,5 @@
 #include "adapters/file/TrackFile.hpp"
-#include "adapters/gl/CarMesh.hpp"
-#include "adapters/gl/ChaseCamera.hpp"
-#include "adapters/gl/Hud.hpp"
-#include "adapters/gl/Renderer.hpp"
-#include "adapters/gl/TrackMesh.hpp"
+#include "adapters/gl/GameView.hpp"
 #include "adapters/sdl/SdlInput.hpp"
 #include "application/GameSession.hpp"
 
@@ -29,33 +25,15 @@ namespace
 {
 
 using adapters::file::TrackFile;
-using adapters::gl::buildCarBody;
-using adapters::gl::buildCarShadow;
-using adapters::gl::buildCarWheel;
-using adapters::gl::buildTrackMesh;
-using adapters::gl::carModelMatrix;
-using adapters::gl::ChaseCamera;
-using adapters::gl::CpuMesh;
-using adapters::gl::drawHud;
-using adapters::gl::GpuMesh;
-using adapters::gl::Renderer;
+using adapters::gl::GameView;
 using adapters::sdl::InputFrame;
 using adapters::sdl::SdlInput;
 using application::GameSession;
 using domain::Car;
 using domain::clampf;
 using domain::DriveInput;
-using domain::lookAt;
-using domain::Mat4;
-using domain::mul;
-using domain::perspective;
-using domain::rotationX;
-using domain::rotationY;
 using domain::Track;
 using domain::TrackPose;
-using domain::TrackSample;
-using domain::translation;
-using domain::Vec3;
 using domain::wrapPi;
 
 constexpr double MAX_FRAME_SEC = 0.25;
@@ -65,38 +43,11 @@ struct App
     SDL_Window* window{};
     SDL_GLContext gl{};
     SdlInput input;
-    Renderer renderer;
+    GameView view;
     GameSession session;
-    GpuMesh course;
-    GpuMesh body;
-    GpuMesh wheel;
-    GpuMesh shadow;
-    ChaseCamera camera;
     bool running{true};
-    bool showHelp{true};
     Uint64 prevCounter{};
 };
-
-void resetRace(App& app)
-{
-    app.session.reset();
-    app.camera.snap();
-}
-
-float carPitch(const App& app)
-{
-    Vec3 forward{std::sin(app.session.car().yaw), 0, std::cos(app.session.car().yaw)};
-    float preferS = app.session.car().ground.found ? app.session.car().ground.s : -1.0f;
-    TrackPose ahead = app.session.track().query(app.session.car().x + forward.x * 2.4f,
-                                                app.session.car().z + forward.z * 2.4f, app.session.car().y, preferS);
-    TrackPose behind = app.session.track().query(app.session.car().x - forward.x * 2.4f,
-                                                 app.session.car().z - forward.z * 2.4f, app.session.car().y, preferS);
-    if (!ahead.found || !behind.found)
-    {
-        return 0;
-    }
-    return std::atan2(ahead.centerY - behind.centerY, 4.8f);
-}
 
 void frame(void* userdata)
 {
@@ -107,12 +58,13 @@ void frame(void* userdata)
     if (input.pause)
         app.session.togglePause();
     if (input.camera)
-        app.camera.cycleMode();
+        app.view.cycleCamera();
     if (input.help)
-        app.showHelp = !app.showHelp;
+        app.view.toggleHelp();
     if (input.reset)
     {
-        resetRace(app);
+        app.session.reset();
+        app.view.snapCamera();
     }
 
     Uint64 now = SDL_GetPerformanceCounter();
@@ -124,43 +76,11 @@ void frame(void* userdata)
         elapsed = 0;
 
     app.session.advance(elapsed, input.drive);
-    app.camera.update(app.session.car(), app.session.track(), float(elapsed));
 
     int drawableW = 0;
     int drawableH = 0;
     SDL_GL_GetDrawableSize(app.window, &drawableW, &drawableH);
-    app.renderer.resize(drawableW, drawableH);
-    app.renderer.clearFrame();
-    app.renderer.drawSky();
-
-    float aspect = float(drawableW) / float(drawableH > 0 ? drawableH : 1);
-    Mat4 proj = perspective(60.0f * 3.14159265f / 180.0f, aspect, 0.15f, 4000.0f);
-    Mat4 view = lookAt(app.camera.eye(), app.camera.look(), {0, 1, 0});
-    app.renderer.beginWorld(mul(proj, view), app.camera.eye());
-
-    Mat4 identity;
-    app.renderer.draw(app.course, identity);
-    Mat4 shadow = mul(translation(app.session.car().x, app.session.car().y + 0.08f, app.session.car().z),
-                      rotationY(app.session.car().yaw));
-    app.renderer.draw(app.shadow, shadow);
-
-    float pitch = carPitch(app);
-    float roll = std::atan(app.session.car().ground.cross);
-    Mat4 model = carModelMatrix(app.session.car(), pitch, roll);
-    app.renderer.draw(app.body, model);
-    const float wheelX = 0.82f;
-    const float wheelZ[2] = {1.42f, -1.38f};
-    const float steerForWheel[2] = {app.session.car().steerAngle, 0};
-    for (int i = 0; i < 2; ++i)
-    {
-        for (int side = -1; side <= 1; side += 2)
-        {
-            Mat4 place = mul(translation(float(side) * wheelX, 0.34f, wheelZ[i]),
-                             mul(rotationY(steerForWheel[i]), rotationX(app.session.car().wheelSpin)));
-            app.renderer.draw(app.wheel, mul(model, place));
-        }
-    }
-    drawHud(app.renderer, app.session, app.camera, app.showHelp);
+    app.view.render(app.session, float(elapsed), drawableW, drawableH);
     SDL_GL_SwapWindow(app.window);
 
 #ifndef __EMSCRIPTEN__
@@ -286,7 +206,7 @@ bool initGl(App& app)
         return false;
     }
     SDL_GL_SetSwapInterval(1);
-    if (!app.renderer.init())
+    if (!app.view.init(app.session.track()))
     {
         SDL_Log("GL init failed");
         return false;
@@ -335,18 +255,6 @@ int main(int argc, char** argv)
         return 1;
     }
     app.input.open();
-    CpuMesh course;
-    buildTrackMesh(app.session.track(), course);
-    app.course = app.renderer.upload(course);
-    CpuMesh body;
-    CpuMesh wheel;
-    CpuMesh shadow;
-    buildCarBody(body);
-    buildCarWheel(wheel);
-    buildCarShadow(shadow);
-    app.body = app.renderer.upload(body);
-    app.wheel = app.renderer.upload(wheel);
-    app.shadow = app.renderer.upload(shadow);
     app.prevCounter = SDL_GetPerformanceCounter();
 
 #ifdef __EMSCRIPTEN__
