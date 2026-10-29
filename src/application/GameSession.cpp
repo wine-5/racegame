@@ -6,7 +6,7 @@ namespace application
 using domain::DriveInput;
 using domain::LapTimer;
 using domain::Track;
-using ports::TrackSource;
+using ports::ITrackSource;
 
 namespace
 {
@@ -16,7 +16,7 @@ constexpr int kMaxStepsPerFrame = 8;
 
 }  // namespace
 
-bool GameSession::start(TrackSource& source)
+bool GameSession::start(ITrackSource& source)
 {
     track_ = Track{};
     if (!source.load(track_))

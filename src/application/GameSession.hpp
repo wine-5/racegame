@@ -1,6 +1,6 @@
 #pragma once
 
-#include "application/ports/TrackSource.hpp"
+#include "application/ports/ITrackSource.hpp"
 #include "domain/Car.hpp"
 #include "domain/LapTimer.hpp"
 #include "domain/Track.hpp"
@@ -16,7 +16,7 @@ public:
     static constexpr double kFixedStepSec = 1.0 / 60.0;
 
     // コースを読んで、車をスタート位置に置く。
-    bool start(ports::TrackSource& source);
+    bool start(ports::ITrackSource& source);
     void reset();
     void togglePause() { paused_ = !paused_; }
     bool paused() const { return paused_; }

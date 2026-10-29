@@ -1,6 +1,6 @@
 #pragma once
 
-#include "application/ports/TrackSource.hpp"
+#include "application/ports/ITrackSource.hpp"
 
 #include <string>
 
@@ -8,7 +8,7 @@ namespace adapters::file
 {
 
 // assets/track/*.txt のテキスト形式からコースを読む。
-class TrackFile : public application::ports::TrackSource
+class TrackFile : public application::ports::ITrackSource
 {
 public:
     explicit TrackFile(std::string path);
