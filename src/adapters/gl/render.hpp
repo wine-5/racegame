@@ -1,7 +1,7 @@
 #pragma once
 
 #include "domain/geom.hpp"
-#include "domain/meshbuild.hpp"
+#include "adapters/gl/meshbuild.hpp"
 
 #include <vector>
 
