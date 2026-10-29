@@ -37,6 +37,9 @@ public:
     /// 今のモードの表示名
     const char* modeName() const;
 
+    /// 縦方向の視野角（度）。速いほど、ドリフトが深いほど広がる
+    float fovDegrees() const { return m_fovDegrees; }
+
 private:
     static constexpr int MODE_COUNT = 3;
 
@@ -44,6 +47,7 @@ private:
     domain::Vec3 m_look{0, 0, 0};
     bool m_ready{};
     int m_mode{};
+    float m_fovDegrees{60.0f};
 };
 
 }  // namespace adapters::gl

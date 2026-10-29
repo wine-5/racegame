@@ -24,7 +24,6 @@ using domain::Vec3;
 namespace
 {
 
-constexpr float FOV_Y_DEGREES = 60.0f;
 constexpr float PI = 3.14159265f;
 
 // 車の前後 2.4m の路面の高さから、車体の前後の傾きを求める
@@ -73,7 +72,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_renderer.drawSky();
 
     float aspect{float(width) / float(height > 0 ? height : 1)};
-    Mat4 proj{perspective(FOV_Y_DEGREES * PI / 180.0f, aspect, 0.15f, 4000.0f)};
+    Mat4 proj{perspective(m_camera.fovDegrees() * PI / 180.0f, aspect, 0.15f, 4000.0f)};
     Mat4 view{lookAt(m_camera.eye(), m_camera.look(), {0, 1, 0})};
     m_renderer.beginWorld(mul(proj, view), m_camera.eye());
 
