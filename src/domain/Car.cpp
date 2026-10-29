@@ -304,7 +304,7 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
     }
 
     hitWall = false;
-    const float wall{track.wallLateral()};
+    const float wall{track.wallLateral(ground.halfWidth)};
     if (std::fabs(ground.lateral) > wall)
     {
         hitWall = true;
@@ -337,10 +337,10 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
         ground.lateral = sign * wall;
     }
 
-    float bankLimit{track.halfWidth + track.curbWidth};
+    float bankLimit{ground.halfWidth + track.curbWidth};
     float bankLat{clampf(ground.lateral, -bankLimit, bankLimit)};
     y = ground.centerY + bankLat * ground.cross;
-    onAsphalt = std::fabs(ground.lateral) <= track.halfWidth + 0.15f;
+    onAsphalt = std::fabs(ground.lateral) <= ground.halfWidth + 0.15f;
 }
 
 }  // namespace domain
