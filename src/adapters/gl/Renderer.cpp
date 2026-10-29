@@ -62,15 +62,31 @@ uniform vec3 uSunColor;
 uniform vec3 uAmbient;
 uniform vec3 uFogColor;
 uniform vec2 uFog;  // 霧が始まる距離、濃くなりきるまでの距離
+const int MAX_LIGHTS = 24;
+uniform int uLightCount;
+uniform vec4 uLightPos[MAX_LIGHTS];  // xyz が位置、w が光の届く距離
+uniform vec3 uLightColor[MAX_LIGHTS];
 out vec4 fragColor;
 void main() {
+    float dist = distance(vWorld, uCamPos);
+    float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);
+    // 色の値が 1 を超える頂点は自分で光る（照明の電球やネオン）。1 を引いた色をそのまま出す
+    if (max(vColor.r, max(vColor.g, vColor.b)) > 1.0) {
+        fragColor = vec4(mix(vColor - 1.0, uFogColor, fog * 0.6), 1.0);
+        return;
+    }
     vec3 n = normalize(vNormal);
     if (!gl_FrontFacing) n = -n;
     vec3 light = uAmbient + uSunColor * max(dot(n, normalize(uSunDir)), 0.0);
-    vec3 color = vColor * light;
-    float dist = distance(vWorld, uCamPos);
-    float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);
-    fragColor = vec4(mix(color, uFogColor, fog), 1.0);
+    for (int i = 0; i < MAX_LIGHTS; ++i) {
+        if (i >= uLightCount) break;
+        vec3 toLight = uLightPos[i].xyz - vWorld;
+        float d = length(toLight);
+        float fall = clamp(1.0 - d / uLightPos[i].w, 0.0, 1.0);
+        // 光の輪の縁がなめらかになるよう 2 乗で弱める。面の向きは半分だけ効かせる
+        light += uLightColor[i] * fall * fall * (0.4 + 0.6 * max(dot(n, toLight / max(d, 0.001)), 0.0));
+    }
+    fragColor = vec4(mix(vColor * light, uFogColor, fog), 1.0);
 }
 )GLSL";
 
@@ -138,12 +154,22 @@ uniform vec3 uSunColor;
 uniform vec3 uAmbient;
 uniform vec3 uFogColor;
 uniform vec2 uFog;
+const int MAX_LIGHTS = 24;
+uniform int uLightCount;
+uniform vec4 uLightPos[MAX_LIGHTS];  // xyz が位置、w が光の届く距離
+uniform vec3 uLightColor[MAX_LIGHTS];
 out vec4 fragColor;
 void main() {
     // 中心が濃く、縁にいくほど薄い丸
     float edge = 1.0 - smoothstep(0.2, 1.0, length(vUv));
-    // 煙は向きを持たないので、太陽の光は向きに関係なく当たるとする
+    // 煙は向きを持たないので、光は向きに関係なく当たるとする
     vec3 light = min(uAmbient + uSunColor, vec3(1.0));
+    for (int i = 0; i < MAX_LIGHTS; ++i) {
+        if (i >= uLightCount) break;
+        float d = distance(uLightPos[i].xyz, vWorld);
+        float fall = clamp(1.0 - d / uLightPos[i].w, 0.0, 1.0);
+        light += uLightColor[i] * fall * fall;
+    }
     float dist = distance(vWorld, uCamPos);
     float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);
     fragColor = vec4(mix(vColor.rgb * light, uFogColor, fog), vColor.a * edge);
@@ -265,6 +291,12 @@ bool Renderer::init()
     m_uParticleAmbient = glGetUniformLocation(m_particleProgram, "uAmbient");
     m_uParticleFogColor = glGetUniformLocation(m_particleProgram, "uFogColor");
     m_uParticleFog = glGetUniformLocation(m_particleProgram, "uFog");
+    m_uLightCount = glGetUniformLocation(m_worldProgram, "uLightCount");
+    m_uLightPos = glGetUniformLocation(m_worldProgram, "uLightPos");
+    m_uLightColor = glGetUniformLocation(m_worldProgram, "uLightColor");
+    m_uParticleLightCount = glGetUniformLocation(m_particleProgram, "uLightCount");
+    m_uParticleLightPos = glGetUniformLocation(m_particleProgram, "uLightPos");
+    m_uParticleLightColor = glGetUniformLocation(m_particleProgram, "uLightColor");
 
     // 板 1 枚は 4 頂点。頂点は xyz + uv + rgba
     glGenVertexArrays(1, &m_particleVao);
@@ -328,6 +360,22 @@ void Renderer::drawSky()
     glEnable(GL_DEPTH_TEST);
 }
 
+void Renderer::setPointLights(const std::vector<PointLight>& lights)
+{
+    m_lightCount = std::min(static_cast<int>(lights.size()), MAX_POINT_LIGHTS);
+    for (int i{}; i < m_lightCount; ++i)
+    {
+        const PointLight& light{lights[std::size_t(i)]};
+        m_lightPos[i * 4 + 0] = light.position.x;
+        m_lightPos[i * 4 + 1] = light.position.y;
+        m_lightPos[i * 4 + 2] = light.position.z;
+        m_lightPos[i * 4 + 3] = light.radius;
+        m_lightColor[i * 3 + 0] = light.color.x;
+        m_lightColor[i * 3 + 1] = light.color.y;
+        m_lightColor[i * 3 + 2] = light.color.z;
+    }
+}
+
 void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
 {
     glDisable(GL_BLEND);
@@ -341,6 +389,9 @@ void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
     glUniform3f(m_uAmbient, l.ambient.x, l.ambient.y, l.ambient.z);
     glUniform3f(m_uFogColor, l.fogColor.x, l.fogColor.y, l.fogColor.z);
     glUniform2f(m_uFog, l.fogStart, l.fogRange);
+    glUniform1i(m_uLightCount, m_lightCount);
+    glUniform4fv(m_uLightPos, MAX_POINT_LIGHTS, m_lightPos);
+    glUniform3fv(m_uLightColor, MAX_POINT_LIGHTS, m_lightColor);
     m_viewProj = viewProj;
     m_cameraPos = cameraPos;
 }
@@ -384,6 +435,9 @@ void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, V
     glUniform3f(m_uParticleAmbient, l.ambient.x, l.ambient.y, l.ambient.z);
     glUniform3f(m_uParticleFogColor, l.fogColor.x, l.fogColor.y, l.fogColor.z);
     glUniform2f(m_uParticleFog, l.fogStart, l.fogRange);
+    glUniform1i(m_uParticleLightCount, m_lightCount);
+    glUniform4fv(m_uParticleLightPos, MAX_POINT_LIGHTS, m_lightPos);
+    glUniform3fv(m_uParticleLightColor, MAX_POINT_LIGHTS, m_lightColor);
     glBindVertexArray(m_particleVao);
     glBindBuffer(GL_ARRAY_BUFFER, m_particleVbo);
     glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(m_particleVerts.size() * sizeof(float)), m_particleVerts.data(),

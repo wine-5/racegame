@@ -37,6 +37,31 @@ struct Lighting
 };
 
 /**
+ * @brief 点の光（街灯・車のライトなど）
+ * @details 光は距離に応じて弱まり、radius で 0 になる。
+ */
+struct PointLight
+{
+    domain::Vec3 position;
+    domain::Vec3 color{1.0f, 1.0f, 1.0f};
+    float radius{10.0f};  // 光が届く距離（m）
+};
+
+/// 一度に当てられる点の光の数
+constexpr int MAX_POINT_LIGHTS = 24;
+
+/**
+ * @brief 自分で光る色にする
+ * @details 色の値が 1 を超える頂点は、光の当たり方に関係なくその色で光る（シェーダーの決まり）。
+ * @param color 光る色（0..1）
+ * @return メッシュに渡す色
+ */
+inline domain::Vec3 glow(domain::Vec3 color)
+{
+    return color + domain::Vec3{1.0f, 1.0f, 1.0f};
+}
+
+/**
  * @brief カメラの方を向く半透明の板（煙などのパーティクル）
  */
 struct Billboard
@@ -74,6 +99,13 @@ public:
      * @param lighting 新しい設定
      */
     void setLighting(const Lighting& lighting) { m_lighting = lighting; }
+
+    /**
+     * @brief 点の光を決める
+     * @details beginWorld より前に呼ぶ。MAX_POINT_LIGHTS を超えた分は使わない。
+     * @param lights 点の光
+     */
+    void setPointLights(const std::vector<PointLight>& lights);
 
     /// 画面を消す
     void clearFrame();
@@ -219,6 +251,15 @@ private:
     int m_uParticleFogColor{-1};
     int m_uParticleFog{-1};
     Lighting m_lighting;
+    int m_lightCount{};
+    float m_lightPos[MAX_POINT_LIGHTS * 4]{};
+    float m_lightColor[MAX_POINT_LIGHTS * 3]{};
+    int m_uLightCount{-1};
+    int m_uLightPos{-1};
+    int m_uLightColor{-1};
+    int m_uParticleLightCount{-1};
+    int m_uParticleLightPos{-1};
+    int m_uParticleLightColor{-1};
     unsigned m_particleProgram{};
     unsigned m_particleVao{};
     unsigned m_particleVbo{};
