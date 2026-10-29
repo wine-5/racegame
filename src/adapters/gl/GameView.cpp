@@ -2,8 +2,10 @@
 
 #include "adapters/gl/CarMesh.hpp"
 #include "adapters/gl/Hud.hpp"
+#include "adapters/gl/PortScenery.hpp"
 #include "adapters/gl/TrackMesh.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 namespace adapters::gl
@@ -66,7 +68,19 @@ void GameView::loadStage(const Track& track, Scenery scenery)
 {
     m_scenery = scenery;
     CpuMesh course;
-    buildTrackMesh(track, course);
+    if (scenery == Scenery::Circuit)
+    {
+        buildTrackMesh(track, course);
+        m_lamps.clear();
+        m_renderer.setLighting(Lighting{});
+        m_skidMarks.setRoadColor({0.17f, 0.17f, 0.19f});
+    }
+    else
+    {
+        buildPortScenery(track, course, m_lamps);
+        m_renderer.setLighting(portLighting());
+        m_skidMarks.setRoadColor(portRoadColor());
+    }
     m_renderer.release(m_course);
     m_course = m_renderer.upload(course);
     snapCamera();
@@ -83,6 +97,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
         m_skidMarksDirty = false;
     }
 
+    chooseLights(session.car());
     m_renderer.resize(width, height);
     m_renderer.clearFrame();
     m_renderer.drawSky();
@@ -106,6 +121,34 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
 
     drawHud(m_renderer, session, m_camera, m_showHelp, m_scenery == Scenery::Circuit);
+}
+
+void GameView::chooseLights(const Car& car)
+{
+    m_lights.clear();
+    if (m_scenery != Scenery::Circuit)
+    {
+        // 夜は車のライトを点ける。前は道を照らし、後ろは煙を赤く染める
+        Vec3 forward{std::sin(car.yaw), 0, std::cos(car.yaw)};
+        Vec3 position{car.x, car.y, car.z};
+        m_lights.push_back({position + forward * 7.0f + Vec3{0, 0.9f, 0}, Vec3{0.95f, 0.9f, 0.75f} * 1.1f, 17.0f});
+        m_lights.push_back({position - forward * 2.8f + Vec3{0, 0.7f, 0}, Vec3{1.0f, 0.08f, 0.05f} * 0.9f, 7.0f});
+    }
+    // 光の数には上限があるので、カメラに近い街灯から使う
+    Vec3 eye{m_camera.eye()};
+    std::size_t room{std::size_t(MAX_POINT_LIGHTS) - m_lights.size()};
+    std::size_t count{std::min(room, m_lamps.size())};
+    std::partial_sort(m_lamps.begin(), m_lamps.begin() + std::ptrdiff_t(count), m_lamps.end(),
+                      [eye](const PointLight& a, const PointLight& b)
+                      {
+                          Vec3 da{a.position - eye};
+                          Vec3 db{b.position - eye};
+                          // 遠くまで届く光は、遠くにあっても先に選ぶ
+                          return domain::dot(da, da) / (a.radius * a.radius) <
+                                 domain::dot(db, db) / (b.radius * b.radius);
+                      });
+    m_lights.insert(m_lights.end(), m_lamps.begin(), m_lamps.begin() + std::ptrdiff_t(count));
+    m_renderer.setPointLights(m_lights);
 }
 
 void GameView::drawCar(const Car& car, const Track& track)

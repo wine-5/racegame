@@ -71,8 +71,13 @@ private:
     /// 車と影とタイヤを描く
     void drawCar(const domain::Car& car, const domain::Track& track);
 
+    /// カメラに近い街灯と車のライトを選んで Renderer に渡す
+    void chooseLights(const domain::Car& car);
+
     Renderer m_renderer;
     Scenery m_scenery = Scenery::Circuit;
+    std::vector<PointLight> m_lamps;   // 景色に立つ街灯などの光
+    std::vector<PointLight> m_lights;  // このフレームで当てる光
     GpuMesh m_course;
     GpuMesh m_body;
     GpuMesh m_wheel;

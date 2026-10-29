@@ -20,8 +20,7 @@ constexpr float HALF_WIDTH = 0.13f;  // 帯の幅の半分（m）
 constexpr float LIFT = 0.03f;        // 路面から浮かせる高さ（m）
 constexpr float WHEEL_X = 0.82f;
 constexpr float WHEEL_Z = -1.38f;
-// 路面の色（TrackMesh のアスファルト）と、いちばん濃い跡の色
-const Vec3 ROAD_COLOR{0.17f, 0.17f, 0.19f};
+// いちばん濃い跡の色
 const Vec3 MARK_COLOR{0.035f, 0.035f, 0.04f};
 
 }  // namespace
@@ -111,7 +110,7 @@ void SkidMarks::build(CpuMesh& mesh) const
         // 古い跡ほど路面の色に近づける。いちばん新しい跡が 0、消える直前が 1
         float age{float(count - 1 - i) / float(MAX_SEGMENTS)};
         float amount{segment.darkness * (1.0f - 0.65f * age)};
-        Vec3 color{ROAD_COLOR + (MARK_COLOR - ROAD_COLOR) * amount};
+        Vec3 color{m_roadColor + (MARK_COLOR - m_roadColor) * amount};
         mesh.addQuad(segment.a0, segment.a1, segment.b1, segment.b0, up, color);
     }
 }
