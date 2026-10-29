@@ -35,8 +35,8 @@ struct CaptureOptions
 {
     std::string path;  // 保存先の PNG。空なら保存しない
     int frame{180};    // このフレームを描いたら保存して終わる
-    bool autoDrive{};  // 決まった操作で加速してドリフトに入る
-    bool autopilot{};  // 自動運転でコースを走る。コースの奥の景色を確かめるのに使う
+    bool autoDrive{};  // 途中からドリフトのボタンを押し続ける
+    bool autopilot{};  // ボタンを押さずに自動運転で走る。コースの奥の景色を確かめるのに使う
 };
 
 /**

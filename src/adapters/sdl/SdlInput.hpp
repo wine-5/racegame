@@ -1,7 +1,5 @@
 #pragma once
 
-#include "domain/Car.hpp"
-
 #include <SDL.h>
 
 namespace adapters::sdl
@@ -9,22 +7,24 @@ namespace adapters::sdl
 
 /**
  * @brief 1 フレーム分の入力
- * @details 運転の入力と、押した瞬間だけ立つ操作。
+ * @details ドリフトのボタン（押している間ずっと立つ）と、押した瞬間だけ立つ操作。
  */
 struct InputFrame
 {
-    domain::DriveInput drive;
+    bool drift{};  // ドリフトのボタンを押しているか
     bool quit{};
     bool reset{};
     bool pause{};
     bool camera{};
     bool help{};
-    int stage{-1};  // 数字キーで選んだステージの番号（0 から）。押していなければ -1
+    bool fullscreen{};  // 全画面の切り替え（F）
+    int stage{-1};      // 数字キーで選んだステージの番号（0 から）。押していなければ -1
 };
 
 /**
- * @brief キーボード・ゲームパッドを読んで InputFrame にする
- * @details ブラウザではパッドを Gamepad API から読む。
+ * @brief キーボード・マウス・ゲームパッドを読んで InputFrame にする
+ * @details ドリフトのボタンは Space、マウスの左ボタン（タッチ）、パッドの A か RT。
+ *          ブラウザではパッドを Gamepad API から読む。
  */
 class SdlInput
 {

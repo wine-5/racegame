@@ -1,7 +1,5 @@
 #include "adapters/sdl/SdlApp.hpp"
 
-#include "adapters/headless/Autopilot.hpp"
-
 #include <SDL_image.h>
 #include <SDL_mixer.h>
 
@@ -27,22 +25,8 @@ constexpr int WINDOW_HEIGHT = 720;
 // ネイティブでフレームを回すときの最短間隔（ミリ秒）
 constexpr double NATIVE_FRAME_MS = 14.0;
 
-// 画面を保存するときの決まった操作。スタート直後の直線で加速し、右へ振ってドリフトに入る
-domain::DriveInput captureDrive(int frame)
-{
-    domain::DriveInput drive;
-    drive.throttle = 1;
-    if (frame >= 150 && frame < 165)
-    {
-        drive.steer = 1;
-        drive.handbrake = true;
-    }
-    else if (frame >= 165)
-    {
-        drive.steer = 0.5f;
-    }
-    return drive;
-}
+// 画面を保存するときに、この時間（フレーム）からドリフトのボタンを押し続ける
+constexpr int CAPTURE_DRIFT_FROM = 150;
 
 }  // namespace
 
@@ -226,14 +210,8 @@ void SdlApp::frame()
     if (capturing)
     {
         elapsed = 1.0 / 60.0;
-        if (m_capture.autoDrive)
-        {
-            input.drive = captureDrive(m_frameCount);
-        }
-        else if (m_capture.autopilot)
-        {
-            input.drive = headless::autopilot(m_session.car(), m_session.track());
-        }
+        // 自動運転は常に効いている。--drift ならボタンを押し、--autopilot なら押さない
+        input.drift = m_capture.autoDrive && m_frameCount >= CAPTURE_DRIFT_FROM;
     }
     if (elapsed > MAX_FRAME_SEC)
     {
@@ -244,8 +222,9 @@ void SdlApp::frame()
         elapsed = 0;
     }
 
-    m_session.advance(elapsed, input.drive);
-    m_driftSound.update(m_session.car(), m_session.drift(), input.drive.throttle, float(elapsed), m_session.paused());
+    m_session.advance(elapsed, input.drift);
+    m_driftSound.update(m_session.car(), m_session.drift(), m_session.lastInput().throttle, float(elapsed),
+                        m_session.paused());
 
     int drawableW{};
     int drawableH{};

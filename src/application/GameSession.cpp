@@ -32,9 +32,11 @@ void GameSession::reset()
     m_car.reset(m_track);
     m_lap = LapTimer{};
     m_drift.reset();
+    m_driver.reset();
+    m_lastInput = DriveInput{};
 }
 
-void GameSession::advance(double elapsedSec, const DriveInput& input)
+void GameSession::advance(double elapsedSec, bool driftButton)
 {
     if (elapsedSec > MAX_FRAME_SEC)
         elapsedSec = MAX_FRAME_SEC;
@@ -50,15 +52,16 @@ void GameSession::advance(double elapsedSec, const DriveInput& input)
     int guard{0};
     while (m_accumulator >= FIXED_STEP_SEC && guard < MAX_STEPS_PER_FRAME)
     {
-        step(input);
+        step(driftButton);
         m_accumulator -= FIXED_STEP_SEC;
         ++guard;
     }
 }
 
-void GameSession::step(const DriveInput& input)
+void GameSession::step(bool driftButton)
 {
-    m_car.update(float(FIXED_STEP_SEC), input, m_track);
+    m_lastInput = m_driver.drive(m_car, m_track, driftButton, float(FIXED_STEP_SEC));
+    m_car.update(float(FIXED_STEP_SEC), m_lastInput, m_track);
     m_lap.tick(m_car.ground.s, m_track.length, float(FIXED_STEP_SEC));
     m_drift.update(m_car, float(FIXED_STEP_SEC));
 }
