@@ -10,9 +10,11 @@ namespace adapters::gl
 {
 
 using domain::Car;
+using domain::cross;
 using domain::lookAt;
 using domain::Mat4;
 using domain::mul;
+using domain::normalize;
 using domain::perspective;
 using domain::rotationX;
 using domain::rotationY;
@@ -24,7 +26,6 @@ using domain::Vec3;
 namespace
 {
 
-constexpr float FOV_Y_DEGREES = 60.0f;
 constexpr float PI = 3.14159265f;
 
 // 車の前後 2.4m の路面の高さから、車体の前後の傾きを求める
@@ -67,19 +68,35 @@ bool GameView::init(const Track& track)
 void GameView::render(const application::GameSession& session, float dt, int width, int height)
 {
     m_camera.update(session.car(), session.track(), dt);
+    m_smoke.update(session.car(), dt, !session.paused());
+    if (m_skidMarks.update(session.car(), !session.paused()) || m_skidMarksDirty)
+    {
+        m_skidMarks.build(m_skidMesh);
+        m_renderer.update(m_skidGpu, m_skidMesh);
+        m_skidMarksDirty = false;
+    }
 
     m_renderer.resize(width, height);
     m_renderer.clearFrame();
     m_renderer.drawSky();
 
     float aspect{float(width) / float(height > 0 ? height : 1)};
-    Mat4 proj{perspective(FOV_Y_DEGREES * PI / 180.0f, aspect, 0.15f, 4000.0f)};
+    Mat4 proj{perspective(m_camera.fovDegrees() * PI / 180.0f, aspect, 0.15f, 4000.0f)};
     Mat4 view{lookAt(m_camera.eye(), m_camera.look(), {0, 1, 0})};
     m_renderer.beginWorld(mul(proj, view), m_camera.eye());
 
     Mat4 identity;
     m_renderer.draw(m_course, identity);
+    m_renderer.drawDecal(m_skidGpu);
     drawCar(session.car(), session.track());
+
+    // 半透明のものは不透明なものをすべて描いてから
+    Vec3 viewDir{normalize(m_camera.look() - m_camera.eye())};
+    Vec3 cameraRight{normalize(cross(viewDir, Vec3{0, 1, 0}))};
+    Vec3 cameraUp{cross(cameraRight, viewDir)};
+    m_billboards.clear();
+    m_smoke.collect(m_billboards, m_camera.eye());
+    m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
 
     drawHud(m_renderer, session, m_camera, m_showHelp);
 }
@@ -106,6 +123,13 @@ void GameView::drawCar(const Car& car, const Track& track)
             m_renderer.draw(m_wheel, mul(model, place));
         }
     }
+}
+
+void GameView::readPixels(std::vector<std::uint8_t>& rgba, int& width, int& height) const
+{
+    m_renderer.readPixels(rgba);
+    width = m_renderer.width();
+    height = m_renderer.height();
 }
 
 }  // namespace adapters::gl

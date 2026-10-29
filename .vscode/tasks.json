@@ -13,15 +13,17 @@
       "label": "ブラウザ版のサーバーを起動",
       "type": "shell",
       // すでに 8080 番で動いていれば、新しく起動しない
-      "command": "if (echo > /dev/tcp/127.0.0.1/8080) 2>/dev/null; then echo 'Serving HTTP (already running)'; else python3 -u -m http.server 8080; fi",
+      // Python が表示する http://0.0.0.0:8080/ はブラウザでは開けないので、開くアドレスを先に表示する
+      "command": "echo 'ゲームを開くアドレス: http://localhost:8080/build-web/racegame.html'; if (echo > /dev/tcp/127.0.0.1/8080) 2>/dev/null; then echo 'Serving HTTP (already running)'; else python3 -u -m http.server 8080; fi",
       "detail": "ワークスペースを http://localhost:8080 で配信する",
       "isBackground": true,
       "problemMatcher": {
         "owner": "http-server",
         "pattern": { "regexp": "^__never_matches__$" },
+        // 起動した時点で「準備中」とし、Serving HTTP が出たら準備完了とする
         "background": {
-          "activesBegin": ".",
-          "beginsPattern": ".",
+          "activeBegin": true,
+          "beginsPattern": "^__never_matches__$",
           "endsPattern": "Serving HTTP"
         }
       }

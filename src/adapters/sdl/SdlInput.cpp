@@ -92,6 +92,8 @@ PadPulse readBrowserPad(DriveInput& input)
                 input.throttle = 1;
             if (held(13))
                 input.brake = 1;
+            if (held(0))
+                input.handbrake = true;
             float throttle{analog(7)};
             float brake{analog(6)};
             if (throttle < 0.01f && pad.numAxes > 5)
@@ -132,6 +134,8 @@ DriveInput readDrive(SDL_GameController* pad, PadPulse& pulse)
         input.steer -= 1;
     if (keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT])
         input.steer += 1;
+    if (keys[SDL_SCANCODE_SPACE])
+        input.handbrake = true;
 #ifndef __EMSCRIPTEN__
     if (pad)
     {
@@ -153,6 +157,8 @@ DriveInput readDrive(SDL_GameController* pad, PadPulse& pulse)
             input.steer -= 1;
         if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
             input.steer += 1;
+        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_A))
+            input.handbrake = true;
     }
 #else
     (void)pad;

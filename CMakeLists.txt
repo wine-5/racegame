@@ -32,6 +32,7 @@ message(STATUS "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 add_library(racecore STATIC
     src/domain/Track.cpp
     src/domain/Car.cpp
+    src/domain/DriftScore.cpp
     src/domain/LapTimer.cpp
     src/application/GameSession.cpp
 )
@@ -46,6 +47,8 @@ add_executable(racegame
     src/adapters/gl/GameView.cpp
     src/adapters/gl/Hud.cpp
     src/adapters/gl/Renderer.cpp
+    src/adapters/gl/SkidMarks.cpp
+    src/adapters/gl/TireSmoke.cpp
     src/adapters/gl/TrackMesh.cpp
     src/adapters/headless/SelfTest.cpp
     src/adapters/sdl/SdlApp.cpp

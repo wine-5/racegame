@@ -3,6 +3,7 @@
 #include "adapters/gl/CpuMesh.hpp"
 #include "domain/Geom.hpp"
 
+#include <cstdint>
 #include <vector>
 
 namespace adapters::gl
@@ -17,6 +18,19 @@ struct GpuMesh
     unsigned vbo{};
     unsigned ibo{};
     int indexCount{};
+};
+
+/**
+ * @brief カメラの方を向く半透明の板（煙などのパーティクル）
+ */
+struct Billboard
+{
+    domain::Vec3 position;
+    float size{1.0f};  // 一辺の長さ（m）
+    float r{1.0f};
+    float g{1.0f};
+    float b{1.0f};
+    float a{1.0f};  // 不透明度
 };
 
 /**
@@ -58,6 +72,16 @@ public:
      * @param model モデル行列
      */
     void draw(const GpuMesh& mesh, const domain::Mat4& model);
+
+    /**
+     * @brief 半透明の板をまとめて描く
+     * @details beginWorld のあと、不透明なものをすべて描いてから呼ぶ。奥から順に並べ替えて描く。
+     *          板は丸くぼかして描くので、煙や埃に使える。
+     * @param items 描く板。並べ替えるので書き換わる
+     * @param cameraRight カメラの右方向
+     * @param cameraUp カメラの上方向
+     */
+    void drawBillboards(std::vector<Billboard>& items, domain::Vec3 cameraRight, domain::Vec3 cameraUp);
 
     /// HUD の描画を始める。以降の addQuad / drawLine / drawText は flushHud でまとめて描く
     void beginHud();
@@ -107,11 +131,33 @@ public:
     void flushHud();
 
     /**
+     * @brief 路面に貼るメッシュ（タイヤ痕など）を描く
+     * @details 路面と同じ高さでもちらつかないよう、少しだけ手前にずらして描く。
+     * @param mesh 描くメッシュ
+     */
+    void drawDecal(const GpuMesh& mesh);
+
+    /**
+     * @brief 転送済みのメッシュの中身を入れ替える
+     * @details 毎フレーム形が変わるメッシュに使う。まだ転送していなければ新しく作る。
+     * @param gpu 入れ替える先
+     * @param mesh 新しい中身
+     */
+    void update(GpuMesh& gpu, const CpuMesh& mesh);
+
+    /**
      * @brief メッシュを GPU に転送する
      * @param mesh 転送するメッシュ
      * @return 転送したメッシュ
      */
     GpuMesh upload(const CpuMesh& mesh);
+
+    /**
+     * @brief 描画した画面を読み出す
+     * @details 下の行から順に並ぶ（OpenGL の向き）。
+     * @param rgba 読み出し先。幅 × 高さ × 4 バイトになる
+     */
+    void readPixels(std::vector<std::uint8_t>& rgba) const;
 
     /// 描画先の幅（ピクセル）
     int width() const { return m_width; }
@@ -133,6 +179,16 @@ private:
     int m_uModel{-1};
     int m_uCamPos{-1};
     int m_uOrtho{-1};
+    unsigned m_particleProgram{};
+    unsigned m_particleVao{};
+    unsigned m_particleVbo{};
+    unsigned m_particleIbo{};
+    int m_uParticleViewProj{-1};
+    int m_uParticleCamPos{-1};
+    domain::Mat4 m_viewProj;
+    domain::Vec3 m_cameraPos;
+    std::vector<float> m_particleVerts;
+    std::vector<unsigned> m_particleIndices;
     std::vector<float> m_hudVerts;
     std::vector<unsigned> m_hudIndices;
 };

@@ -8,12 +8,33 @@ namespace adapters::gl
 using domain::TrackPose;
 using domain::Vec3;
 
+namespace
+{
+
+// ドリフト中に、カメラを車体の向きから進む向きへどれだけ寄せるか（1 で進む向きそのもの）。
+// 寄せると、車体が斜めに滑っている角度が画面で見える
+constexpr float VELOCITY_FOLLOW = 0.7f;
+
+// 速いほど視野角を広げる。周りが速く流れて見え、速度を感じやすくなる
+constexpr float BASE_FOV = 60.0f;
+constexpr float SPEED_FOV = 14.0f;       // 最大でこれだけ広げる（度）
+constexpr float SPEED_FOV_FROM = 15.0f;  // この速度から広げ始める（m/s、約 54 km/h）
+constexpr float SPEED_FOV_TO = 70.0f;    // この速度で最大になる（m/s、約 250 km/h）
+// ドリフトが深いほど、さらに少し広げる
+constexpr float DRIFT_FOV = 6.0f;
+constexpr float DRIFT_FOV_ANGLE = 0.8f;  // この角度で最大になる（ラジアン、約 46°）
+// 視野角が目標に追いつく速さ。急に変わると酔うので、位置より遅くする
+constexpr float FOV_RESPONSE = 2.5f;
+
+}  // namespace
+
 void ChaseCamera::update(const domain::Car& car, const domain::Track& track, float dt)
 {
     const float back[MODE_COUNT]{8.6f, 4.1f, 16.0f};
     const float up[MODE_COUNT]{3.3f, 1.55f, 7.2f};
     const float ahead[MODE_COUNT]{9.0f, 6.0f, 14.0f};
-    Vec3 forward{std::sin(car.yaw), 0, std::cos(car.yaw)};
+    float viewYaw{car.yaw + car.slipAngle() * VELOCITY_FOLLOW};
+    Vec3 forward{std::sin(viewYaw), 0, std::cos(viewYaw)};
     Vec3 position{car.x, car.y, car.z};
     Vec3 eye{position - forward * back[m_mode] + Vec3{0, up[m_mode], 0}};
     Vec3 look{position + forward * ahead[m_mode] + Vec3{0, 1.15f, 0}};
@@ -23,13 +44,18 @@ void ChaseCamera::update(const domain::Car& car, const domain::Track& track, flo
     {
         eye.y = under.centerY + 0.8f;
     }
+    float speedAmount{std::fmin(std::fmax((car.speed - SPEED_FOV_FROM) / (SPEED_FOV_TO - SPEED_FOV_FROM), 0.0f), 1.0f)};
+    float driftAmount{std::fmin(std::fabs(car.slipAngle()) / DRIFT_FOV_ANGLE, 1.0f)};
+    float fov{BASE_FOV + SPEED_FOV * speedAmount + DRIFT_FOV * driftAmount};
     if (!m_ready)
     {
         m_eye = eye;
         m_look = look;
+        m_fovDegrees = fov;
         m_ready = true;
         return;
     }
+    m_fovDegrees += (fov - m_fovDegrees) * (1.0f - std::exp(-dt * FOV_RESPONSE));
     float blend{1.0f - std::exp(-dt * 7.0f)};
     m_eye = m_eye + (eye - m_eye) * blend;
     m_look = m_look + (look - m_look) * blend;

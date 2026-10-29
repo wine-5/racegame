@@ -2,7 +2,12 @@
 
 #include "adapters/gl/ChaseCamera.hpp"
 #include "adapters/gl/Renderer.hpp"
+#include "adapters/gl/SkidMarks.hpp"
+#include "adapters/gl/TireSmoke.hpp"
 #include "application/GameSession.hpp"
+
+#include <cstdint>
+#include <vector>
 
 namespace adapters::gl
 {
@@ -31,14 +36,28 @@ public:
      */
     void render(const application::GameSession& session, float dt, int width, int height);
 
-    /// カメラを補間せずに車の後ろへ戻す。リセットのあとに呼ぶ
-    void snapCamera() { m_camera.snap(); }
+    /// カメラを補間せずに車の後ろへ戻し、煙などの演出を消す。リセットのあとに呼ぶ
+    void snapCamera()
+    {
+        m_camera.snap();
+        m_smoke.clear();
+        m_skidMarks.clear();
+        m_skidMarksDirty = true;
+    }
 
     /// カメラのモードを切り替える
     void cycleCamera() { m_camera.cycleMode(); }
 
     /// 操作説明の表示を切り替える
     void toggleHelp() { m_showHelp = !m_showHelp; }
+
+    /**
+     * @brief 最後に描いた画面を読み出す
+     * @param rgba 読み出し先。下の行から順に並ぶ
+     * @param width 幅（ピクセル）を受け取る
+     * @param height 高さ（ピクセル）を受け取る
+     */
+    void readPixels(std::vector<std::uint8_t>& rgba, int& width, int& height) const;
 
 private:
     /// 車と影とタイヤを描く
@@ -50,6 +69,12 @@ private:
     GpuMesh m_wheel;
     GpuMesh m_shadow;
     ChaseCamera m_camera;
+    TireSmoke m_smoke;
+    SkidMarks m_skidMarks;
+    CpuMesh m_skidMesh;
+    GpuMesh m_skidGpu;
+    bool m_skidMarksDirty{};
+    std::vector<Billboard> m_billboards;
     bool m_showHelp{true};
 };
 
