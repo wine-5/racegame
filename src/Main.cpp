@@ -54,7 +54,7 @@ using domain::translation;
 using domain::Vec3;
 using domain::wrapPi;
 
-constexpr double kMaxFrameSec = 0.25;
+constexpr double MAX_FRAME_SEC = 0.25;
 
 struct Orbit
 {
@@ -278,8 +278,8 @@ void frame(void* userdata)
     Uint64 now = SDL_GetPerformanceCounter();
     double elapsed = double(now - app.prevCounter) / double(SDL_GetPerformanceFrequency());
     app.prevCounter = now;
-    if (elapsed > kMaxFrameSec)
-        elapsed = kMaxFrameSec;
+    if (elapsed > MAX_FRAME_SEC)
+        elapsed = MAX_FRAME_SEC;
     if (elapsed < 0)
         elapsed = 0;
 

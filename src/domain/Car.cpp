@@ -8,16 +8,16 @@ namespace domain
 namespace
 {
 
-constexpr float kMaxSpeed = 82.0f;  // 約 295 km/h
-constexpr float kMaxReverse = 9.0f;
-constexpr float kAccel = 13.0f;
-constexpr float kBrake = 30.0f;
-constexpr float kReverseAccel = 8.0f;
-constexpr float kDrag = 0.00045f;
-constexpr float kRolling = 0.9f;
-constexpr float kWheelbase = 3.05f;
-constexpr float kSteerRate = 2.6f;
-constexpr float kWheelRadius = 0.34f;
+constexpr float MAX_SPEED = 82.0f;  // 約 295 km/h
+constexpr float MAX_REVERSE = 9.0f;
+constexpr float ACCEL = 13.0f;
+constexpr float BRAKE = 30.0f;
+constexpr float REVERSE_ACCEL = 8.0f;
+constexpr float DRAG = 0.00045f;
+constexpr float ROLLING = 0.9f;
+constexpr float WHEELBASE = 3.05f;
+constexpr float STEER_RATE = 2.6f;
+constexpr float WHEEL_RADIUS = 0.34f;
 
 float maxSteerAt(float speed)
 {
@@ -56,7 +56,7 @@ void Car::stepGrip(float dt)
     float yawRate = 0;
     if (std::fabs(speed) > 0.05f)
     {
-        yawRate = (speed / kWheelbase) * std::tan(steerAngle);
+        yawRate = (speed / WHEELBASE) * std::tan(steerAngle);
     }
     float slow = clampf(1.0f - std::fabs(speed) / 8.0f, 0.0f, 1.0f);
     yawRate += steerAngle * 0.9f * slow;
@@ -69,7 +69,7 @@ void Car::stepGrip(float dt)
 void Car::update(float dt, const DriveInput& input, const Track& track)
 {
     float target = clampf(input.steer, -1.0f, 1.0f) * maxSteerAt(speed);
-    float step = kSteerRate * dt;
+    float step = STEER_RATE * dt;
     steerAngle += clampf(target - steerAngle, -step, step);
     steerAngle = clampf(steerAngle, -0.6f, 0.6f);
 
@@ -87,21 +87,21 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
     float speedBefore = speed;
     if (input.brake > 0.05f && !reversing)
     {
-        force -= input.brake * kBrake * (speed >= 0 ? 1.0f : -1.0f);
+        force -= input.brake * BRAKE * (speed >= 0 ? 1.0f : -1.0f);
     }
     else if (reversing)
     {
-        force -= input.brake * kReverseAccel;
+        force -= input.brake * REVERSE_ACCEL;
     }
     else if (input.throttle > 0.0f && speed > -0.4f)
     {
-        float ratio = clampf(speed / kMaxSpeed, 0.0f, 1.0f);
-        force += input.throttle * kAccel * (1.0f - ratio * ratio);
+        float ratio = clampf(speed / MAX_SPEED, 0.0f, 1.0f);
+        force += input.throttle * ACCEL * (1.0f - ratio * ratio);
     }
-    force -= kDrag * speed * std::fabs(speed);
+    force -= DRAG * speed * std::fabs(speed);
     if (std::fabs(speed) > 0.05f)
     {
-        force -= kRolling * (speed > 0 ? 1.0f : -1.0f);
+        force -= ROLLING * (speed > 0 ? 1.0f : -1.0f);
     }
     // 芝は加速が鈍く、速度も伸びない。横には滑らない。
     if (!onAsphalt)
@@ -124,8 +124,8 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
         if (speedBefore <= 0 && speed > 0)
             speed = 0;
     }
-    speed = clampf(speed, -kMaxReverse, kMaxSpeed);
-    wheelSpin += speed / kWheelRadius * dt;
+    speed = clampf(speed, -MAX_REVERSE, MAX_SPEED);
+    wheelSpin += speed / WHEEL_RADIUS * dt;
 
     stepGrip(dt);
 

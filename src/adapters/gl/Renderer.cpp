@@ -26,14 +26,14 @@ using domain::Vec3;
 namespace
 {
 
-const char* kVersion =
+const char* VERSION =
 #ifdef __EMSCRIPTEN__
     "#version 300 es\nprecision highp float;\n";
 #else
     "#version 330 core\n";
 #endif
 
-const char* kWorldVs = R"GLSL(
+const char* WORLD_VS = R"GLSL(
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec3 aColor;
@@ -51,7 +51,7 @@ void main() {
 }
 )GLSL";
 
-const char* kWorldFs = R"GLSL(
+const char* WORLD_FS = R"GLSL(
 in vec3 vNormal;
 in vec3 vColor;
 in vec3 vWorld;
@@ -70,7 +70,7 @@ void main() {
 }
 )GLSL";
 
-const char* kSkyVs = R"GLSL(
+const char* SKY_VS = R"GLSL(
 out float vY;
 void main() {
     vec2 pos = vec2((gl_VertexID == 2) ? 3.0 : -1.0, (gl_VertexID == 1) ? 3.0 : -1.0);
@@ -79,7 +79,7 @@ void main() {
 }
 )GLSL";
 
-const char* kSkyFs = R"GLSL(
+const char* SKY_FS = R"GLSL(
 in float vY;
 out vec4 fragColor;
 void main() {
@@ -90,7 +90,7 @@ void main() {
 }
 )GLSL";
 
-const char* kHudVs = R"GLSL(
+const char* HUD_VS = R"GLSL(
 layout(location = 0) in vec2 aPos;
 layout(location = 1) in vec4 aColor;
 uniform mat4 uOrtho;
@@ -101,7 +101,7 @@ void main() {
 }
 )GLSL";
 
-const char* kHudFs = R"GLSL(
+const char* HUD_FS = R"GLSL(
 in vec4 vColor;
 out vec4 fragColor;
 void main() {
@@ -110,8 +110,8 @@ void main() {
 )GLSL";
 
 // 5x7。bit4 が左端。並びは 0-9 A-Z . : - / %
-constexpr char kGlyphOrder[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.:-/%";
-const std::uint8_t kFont[][7] = {
+constexpr char GLYPH_ORDER[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.:-/%";
+const std::uint8_t FONT[][7] = {
     {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E}, {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E},
     {0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F}, {0x0E, 0x11, 0x01, 0x06, 0x01, 0x11, 0x0E},
     {0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02}, {0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E},
@@ -134,11 +134,11 @@ const std::uint8_t kFont[][7] = {
     {0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00}, {0x01, 0x02, 0x04, 0x04, 0x08, 0x10, 0x10},
     {0x19, 0x1A, 0x02, 0x04, 0x08, 0x0B, 0x13},
 };
-static_assert(sizeof(kFont) / sizeof(kFont[0]) == sizeof(kGlyphOrder) - 1, "glyph count");
+static_assert(sizeof(FONT) / sizeof(FONT[0]) == sizeof(GLYPH_ORDER) - 1, "glyph count");
 
 GLuint compileShader(GLenum type, const char* source)
 {
-    const char* parts[] = {kVersion, source};
+    const char* parts[] = {VERSION, source};
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 2, parts, nullptr);
     glCompileShader(shader);
@@ -186,12 +186,12 @@ int glyphIndex(char c)
     {
         c = static_cast<char>(c - 'a' + 'A');
     }
-    const char* found = std::strchr(kGlyphOrder, c);
+    const char* found = std::strchr(GLYPH_ORDER, c);
     if (!found)
     {
         return -1;
     }
-    return static_cast<int>(found - kGlyphOrder);
+    return static_cast<int>(found - GLYPH_ORDER);
 }
 
 }  // namespace
@@ -199,9 +199,9 @@ int glyphIndex(char c)
 bool Renderer::init()
 {
     glGenVertexArrays(1, &dummyVao);
-    worldProgram = linkProgram(kWorldVs, kWorldFs);
-    skyProgram = linkProgram(kSkyVs, kSkyFs);
-    hudProgram = linkProgram(kHudVs, kHudFs);
+    worldProgram = linkProgram(WORLD_VS, WORLD_FS);
+    skyProgram = linkProgram(SKY_VS, SKY_FS);
+    hudProgram = linkProgram(HUD_VS, HUD_FS);
     if (!worldProgram || !skyProgram || !hudProgram)
     {
         return false;
@@ -336,7 +336,7 @@ void Renderer::drawText(float x, float y, float scale, const char* text, float r
             pen += 6.0f * scale;
             continue;
         }
-        const std::uint8_t* rows = kFont[index];
+        const std::uint8_t* rows = FONT[index];
         for (int row = 0; row < 7; ++row)
         {
             for (int col = 0; col < 5; ++col)

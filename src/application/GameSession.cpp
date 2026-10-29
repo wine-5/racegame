@@ -11,8 +11,8 @@ using ports::ITrackSource;
 namespace
 {
 
-constexpr double kMaxFrameSec = 0.25;
-constexpr int kMaxStepsPerFrame = 8;
+constexpr double MAX_FRAME_SEC = 0.25;
+constexpr int MAX_STEPS_PER_FRAME = 8;
 
 }  // namespace
 
@@ -35,8 +35,8 @@ void GameSession::reset()
 
 void GameSession::advance(double elapsedSec, const DriveInput& input)
 {
-    if (elapsedSec > kMaxFrameSec)
-        elapsedSec = kMaxFrameSec;
+    if (elapsedSec > MAX_FRAME_SEC)
+        elapsedSec = MAX_FRAME_SEC;
     if (elapsedSec < 0)
         elapsedSec = 0;
 
@@ -47,18 +47,18 @@ void GameSession::advance(double elapsedSec, const DriveInput& input)
     }
     m_accumulator += elapsedSec;
     int guard = 0;
-    while (m_accumulator >= kFixedStepSec && guard < kMaxStepsPerFrame)
+    while (m_accumulator >= FIXED_STEP_SEC && guard < MAX_STEPS_PER_FRAME)
     {
         step(input);
-        m_accumulator -= kFixedStepSec;
+        m_accumulator -= FIXED_STEP_SEC;
         ++guard;
     }
 }
 
 void GameSession::step(const DriveInput& input)
 {
-    m_car.update(float(kFixedStepSec), input, m_track);
-    m_lap.tick(m_car.ground.s, m_track.length, float(kFixedStepSec));
+    m_car.update(float(FIXED_STEP_SEC), input, m_track);
+    m_lap.tick(m_car.ground.s, m_track.length, float(FIXED_STEP_SEC));
 }
 
 }  // namespace application

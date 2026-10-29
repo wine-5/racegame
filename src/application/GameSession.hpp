@@ -13,7 +13,7 @@ namespace application
 class GameSession
 {
 public:
-    static constexpr double kFixedStepSec = 1.0 / 60.0;
+    static constexpr double FIXED_STEP_SEC = 1.0 / 60.0;
 
     // コースを読んで、車をスタート位置に置く。
     bool start(ports::ITrackSource& source);
