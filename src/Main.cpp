@@ -55,7 +55,7 @@ int main(int argc, char** argv)
     }
 
     adapters::sdl::SdlApp app{session, stages, firstStage};
-    // 開発用: --capture <file.png> [frame] [--drift] で、そのフレームの画面を保存して終わる
+    // 開発用: --capture <file.png> [frame] [--drift | --autopilot] で、そのフレームの画面を保存して終わる
     adapters::sdl::CaptureOptions capture;
     for (int i{1}; i < argc; ++i)
     {
@@ -70,6 +70,10 @@ int main(int argc, char** argv)
         else if (std::strcmp(argv[i], "--drift") == 0)
         {
             capture.autoDrive = true;
+        }
+        else if (std::strcmp(argv[i], "--autopilot") == 0)
+        {
+            capture.autopilot = true;
         }
     }
     app.setCapture(capture);

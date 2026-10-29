@@ -1,5 +1,7 @@
 #include "adapters/sdl/SdlApp.hpp"
 
+#include "adapters/headless/Autopilot.hpp"
+
 #include <SDL_image.h>
 #include <SDL_mixer.h>
 
@@ -227,6 +229,10 @@ void SdlApp::frame()
         if (m_capture.autoDrive)
         {
             input.drive = captureDrive(m_frameCount);
+        }
+        else if (m_capture.autopilot)
+        {
+            input.drive = headless::autopilot(m_session.car(), m_session.track());
         }
     }
     if (elapsed > MAX_FRAME_SEC)
