@@ -9,6 +9,7 @@ namespace adapters::gl
 
 using application::GameSession;
 using domain::Car;
+using domain::DriftScore;
 using domain::Track;
 using domain::TrackSample;
 using domain::Vec3;
@@ -79,6 +80,75 @@ void drawMinimap(Renderer& renderer, const Track& track, const Car& car)
     renderer.drawLine(lx, ly, rx, ry, 2.0f, 0.9f, 0.2f, 0.18f, 1);
 }
 
+// 内蔵フォントで描いたときの文字列の幅（Renderer::drawText と同じ送り幅）
+float textWidth(const char* text, float scale)
+{
+    float width{};
+    for (const char* cursor{text}; *cursor; ++cursor)
+    {
+        width += (*cursor == ' ' ? 4.0f : 6.0f) * scale;
+    }
+    return width;
+}
+
+void drawCentered(Renderer& renderer, float y, float scale, const char* text, float r, float g, float b, float a)
+{
+    float x{(float(renderer.width()) - textWidth(text, scale)) * 0.5f};
+    renderer.drawText(x, y, scale, text, r, g, b, a);
+}
+
+// 画面上部の中央に、ドリフトの点・倍率・角度と、終わった連続の結果を出す
+void drawDrift(Renderer& renderer, const DriftScore& drift, const Car& car)
+{
+    constexpr float RESULT_SHOW_SEC = 2.0f;
+    constexpr float RAD_TO_DEG = 57.29578f;
+    constexpr float GAUGE_MAX_DEG = 60.0f;
+    char line[64];
+
+    std::snprintf(line, sizeof(line), "SCORE %lld", drift.total());
+    renderer.drawText(float(renderer.width()) - textWidth(line, 2.2f) - 24, 56, 2.2f, line, 0.95f, 0.85f, 0.55f, 1);
+
+    if (drift.chaining())
+    {
+        // 倍率が上がるほど、白から橙へ色を変える
+        float heat{float(drift.multiplier() - 1) / 4.0f};
+        float r{1.0f};
+        float g{0.95f - 0.45f * heat};
+        float b{0.85f - 0.75f * heat};
+        float alpha{drift.drifting() ? 1.0f : 0.55f};
+        std::snprintf(line, sizeof(line), "%d", static_cast<int>(drift.chainPoints()));
+        drawCentered(renderer, 28, 5.0f, line, r, g, b, alpha);
+        std::snprintf(line, sizeof(line), "X%d", drift.multiplier());
+        drawCentered(renderer, 72, 3.0f, line, r, g, b, alpha);
+
+        // 角度のゲージ
+        float angle{std::fabs(car.slipAngle()) * RAD_TO_DEG};
+        float fill{std::fmin(angle / GAUGE_MAX_DEG, 1.0f)};
+        float width{240.0f};
+        float x0{(float(renderer.width()) - width) * 0.5f};
+        renderer.addQuad(x0, 104, x0 + width, 112, 0.05f, 0.05f, 0.07f, 0.6f * alpha);
+        renderer.addQuad(x0, 104, x0 + width * fill, 112, r, g, b, alpha);
+        std::snprintf(line, sizeof(line), "%d DEG", static_cast<int>(angle));
+        drawCentered(renderer, 118, 1.8f, line, 0.9f, 0.9f, 0.92f, alpha);
+        return;
+    }
+
+    if (drift.lastResult() != DriftScore::Result::None && drift.sinceLastResult() < RESULT_SHOW_SEC)
+    {
+        float alpha{1.0f - drift.sinceLastResult() / RESULT_SHOW_SEC};
+        if (drift.lastResult() == DriftScore::Result::Banked)
+        {
+            std::snprintf(line, sizeof(line), "%lld", drift.lastPoints());
+            drawCentered(renderer, 28, 5.0f, line, 0.55f, 1.0f, 0.6f, alpha);
+            drawCentered(renderer, 72, 2.4f, "NICE DRIFT", 0.55f, 1.0f, 0.6f, alpha);
+        }
+        else
+        {
+            drawCentered(renderer, 28, 5.0f, "CRASH", 1.0f, 0.35f, 0.3f, alpha);
+        }
+    }
+}
+
 }  // namespace
 
 void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& camera, bool showHelp)
@@ -128,15 +198,18 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     if (showHelp)
     {
         hud.drawText(24, float(hud.height()) - 78, 1.7f,
-                     "W/UP ACCEL  S/DOWN BRAKE  A/D STEER  SPACE HANDBRAKE  R RESET  C CAMERA  P PAUSE", 0.9f, 0.92f, 0.94f, 1);
+                     "W/UP ACCEL  S/DOWN BRAKE  A/D STEER  SPACE HANDBRAKE  R RESET  C CAMERA  P PAUSE", 0.9f, 0.92f,
+                     0.94f, 1);
         hud.drawText(24, float(hud.height()) - 54, 1.7f,
-                     "PAD: RT ACCEL  LT BRAKE  STICK STEER  A HANDBRAKE  Y CAMERA  BACK RESET  START PAUSE", 0.75f, 0.8f, 0.84f, 1);
+                     "PAD: RT ACCEL  LT BRAKE  STICK STEER  A HANDBRAKE  Y CAMERA  BACK RESET  START PAUSE", 0.75f,
+                     0.8f, 0.84f, 1);
     }
     hud.drawText(float(hud.width()) - 250, float(hud.height()) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
     if (session.paused())
     {
         hud.drawText(float(hud.width()) * 0.5f - 70, float(hud.height()) * 0.45f, 5.0f, "PAUSE", 1, 0.95f, 0.9f, 1);
     }
+    drawDrift(renderer, session.drift(), session.car());
     drawMinimap(renderer, session.track(), session.car());
     hud.flushHud();
 }
