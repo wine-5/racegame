@@ -8,7 +8,7 @@ namespace adapters::file
 {
 
 /**
- * @brief assets/track/*.txt のテキスト形式からコースを読む
+ * @brief assets/track/ にあるテキスト形式のコースファイルを読む
  */
 class TrackFile : public application::ports::ITrackSource
 {
