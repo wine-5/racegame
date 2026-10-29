@@ -2,6 +2,7 @@
 
 #include "adapters/gl/ChaseCamera.hpp"
 #include "adapters/gl/Hud.hpp"
+#include "adapters/gl/PostProcess.hpp"
 #include "adapters/gl/Renderer.hpp"
 #include "adapters/gl/Scenery.hpp"
 #include "adapters/gl/SkidMarks.hpp"
@@ -77,7 +78,19 @@ private:
     /// カメラに近い街灯と車のライトを選んで Renderer に渡す
     void chooseLights(const domain::Car& car);
 
+    /**
+     * @brief 今のゲームの様子から、画面全体の効果の強さを決める
+     * @details 速いほど端がぶれ、深く滑るほど色がずれて鮮やかになる。倍率アップ・得点の確定・
+     *          クラッシュの瞬間には画面を光らせる。
+     */
+    PostEffects feel(const application::GameSession& session, float dt);
+
     Renderer m_renderer;
+    PostProcess m_post;
+    float m_flash{};
+    domain::Vec3 m_flashColor{1.0f, 1.0f, 1.0f};
+    int m_lastMultiplier{1};
+    float m_lastSinceResult{1e9f};
     Scenery m_scenery = Scenery::Circuit;
     std::vector<PointLight> m_lamps;   // 景色に立つ街灯などの光
     std::vector<PointLight> m_lights;  // このフレームで当てる光

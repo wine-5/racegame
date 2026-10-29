@@ -48,7 +48,7 @@ float carPitch(const Car& car, const Track& track)
 
 bool GameView::init()
 {
-    if (!m_renderer.init())
+    if (!m_renderer.init() || !m_post.init())
     {
         return false;
     }
@@ -101,6 +101,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
 
     chooseLights(session.car());
     m_renderer.resize(width, height);
+    m_post.begin(width, height);
     m_renderer.clearFrame();
     m_renderer.drawSky();
 
@@ -121,6 +122,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_billboards.clear();
     m_smoke.collect(m_billboards, m_camera.eye());
     m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
+    m_post.finish(feel(session, dt));
 
     if (title)
     {
@@ -130,6 +132,45 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     {
         drawHud(m_renderer, session, m_camera, m_showHelp, m_scenery == Scenery::Circuit);
     }
+}
+
+PostEffects GameView::feel(const application::GameSession& session, float dt)
+{
+    const Car& car{session.car()};
+    const domain::DriftScore& drift{session.drift()};
+    float speed{std::clamp((car.speed - 25.0f) / 30.0f, 0.0f, 1.0f)};
+    float slide{std::clamp(std::fabs(car.slipAngle()) / 0.75f, 0.0f, 1.0f)};
+
+    // 倍率アップ・得点の確定・クラッシュの瞬間に画面を光らせる
+    if (drift.chaining() && drift.multiplier() > m_lastMultiplier)
+    {
+        m_flash = 0.16f;
+        m_flashColor = {1.0f, 0.3f, 0.8f};
+    }
+    bool newResult{drift.sinceLastResult() < m_lastSinceResult &&
+                   drift.lastResult() != domain::DriftScore::Result::None};
+    if (newResult)
+    {
+        bool banked{drift.lastResult() == domain::DriftScore::Result::Banked};
+        m_flash = banked ? 0.22f : 0.35f;
+        m_flashColor = banked ? Vec3{1.0f, 0.95f, 0.8f} : Vec3{1.0f, 0.15f, 0.1f};
+    }
+    m_lastMultiplier = drift.chaining() ? drift.multiplier() : 1;
+    m_lastSinceResult = drift.sinceLastResult();
+    m_flash = std::max(0.0f, m_flash - dt * 0.9f);
+
+    PostEffects effects;
+    bool night{m_scenery != Scenery::Circuit};
+    effects.bloom = night ? 0.95f : 0.4f;
+    effects.bloomThreshold = night ? 0.74f : 0.88f;
+    effects.speedBlur = speed * 0.85f;
+    effects.aberration = slide * 0.9f + m_flash * 2.0f;
+    effects.vignette = 0.32f + 0.2f * slide;
+    effects.saturation = 1.05f + 0.3f * slide;
+    effects.flash = m_flash;
+    effects.flashColor = m_flashColor;
+    effects.time = m_time;
+    return effects;
 }
 
 void GameView::chooseLights(const Car& car)
