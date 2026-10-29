@@ -156,7 +156,8 @@ void main() {
         if (i >= uLightCount) break;
         float d = distance(uLightPos[i].xyz, vWorld);
         float fall = clamp(1.0 - d / uLightPos[i].w, 0.0, 1.0);
-        light += uLightColor[i] * fall * fall;
+        // 煙は重なると明るくなりすぎるので、光は控えめに当てる
+        light += uLightColor[i] * fall * fall * 0.55;
     }
     float dist = distance(vWorld, uCamPos);
     float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);

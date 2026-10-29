@@ -16,7 +16,7 @@ constexpr std::size_t MAX_PARTICLES = 700;
 constexpr float START_SLIP = 0.12f;         // これより滑っていると煙が出る（ラジアン、約 7°）
 constexpr float FULL_SLIP = 0.6f;           // この角度で最も濃くなる（約 34°）
 constexpr float MIN_SPEED = 4.0f;           // これより遅いと出ない（m/s）
-constexpr float EMIT_RATE = 45.0f;          // 最も濃いときに 1 秒あたりタイヤ 1 本から出る数
+constexpr float EMIT_RATE = 38.0f;          // 最も濃いときに 1 秒あたりタイヤ 1 本から出る数
 constexpr float WHEEL_X = 0.82f;            // 後輪の左右の位置（m）
 constexpr float WHEEL_Z = -1.38f;           // 後輪の前後の位置（m）
 constexpr float CAR_VELOCITY_KEEP = 0.25f;  // 煙が車の速度を受け継ぐ割合
@@ -46,7 +46,7 @@ void TireSmoke::spawn(Vec3 position, Vec3 carVelocity, float intensity, float gr
     particle.life = 1.2f + random() * 0.9f;
     particle.startSize = 0.5f + random() * 0.4f;
     particle.endSize = 3.0f + random() * 2.0f + intensity * 1.5f;
-    particle.opacity = 0.12f + 0.23f * intensity;
+    particle.opacity = 0.08f + 0.16f * intensity;
     particle.groundY = groundY;
     m_particles.push_back(particle);
 }
