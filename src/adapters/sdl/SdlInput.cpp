@@ -19,19 +19,19 @@ namespace
 
 struct PadPulse
 {
-    bool reset = false;
-    bool pause = false;
-    bool camera = false;
+    bool reset{false};
+    bool pause{false};
+    bool camera{false};
 };
 
 float stickDead(float value)
 {
-    const float dead = 0.14f;
+    const float dead{0.14f};
     if (std::fabs(value) < dead)
     {
         return 0;
     }
-    float sign = value > 0 ? 1.0f : -1.0f;
+    float sign{value > 0 ? 1.0f : -1.0f};
     return (value - sign * dead) / (1.0f - dead);
 }
 
@@ -56,18 +56,18 @@ float triggerLevel(float value)
 PadPulse readBrowserPad(DriveInput& input)
 {
     PadPulse pulse;
-    static bool prevCamera = false;
-    static bool prevReset = false;
-    static bool prevPause = false;
-    bool camera = false;
-    bool reset = false;
-    bool pause = false;
+    static bool prevCamera{false};
+    static bool prevReset{false};
+    static bool prevPause{false};
+    bool camera{false};
+    bool reset{false};
+    bool pause{false};
     if (emscripten_sample_gamepad_data() != EMSCRIPTEN_RESULT_SUCCESS)
     {
         prevCamera = prevReset = prevPause = false;
         return pulse;
     }
-    const int count = emscripten_get_num_gamepads();
+    const int count{emscripten_get_num_gamepads()};
     for (int i = 0; i < count; ++i)
     {
         EmscriptenGamepadEvent pad;
@@ -79,7 +79,7 @@ PadPulse readBrowserPad(DriveInput& input)
         auto analog = [&](int index)
         { return index < pad.numButtons ? static_cast<float>(pad.analogButton[index]) : 0.0f; };
         auto held = [&](int index) { return index < pad.numButtons && pad.digitalButton[index]; };
-        const bool standard = std::strcmp(pad.mapping, "standard") == 0 || (pad.numButtons >= 16 && pad.numAxes >= 2);
+        const bool standard{std::strcmp(pad.mapping, "standard") == 0 || (pad.numButtons >= 16 && pad.numAxes >= 2)};
         input.steer += stickDead(axis(0));
         if (standard)
         {
@@ -92,8 +92,8 @@ PadPulse readBrowserPad(DriveInput& input)
                 input.throttle = 1;
             if (held(13))
                 input.brake = 1;
-            float throttle = analog(7);
-            float brake = analog(6);
+            float throttle{analog(7)};
+            float brake{analog(6)};
             if (throttle < 0.01f && pad.numAxes > 5)
                 throttle = triggerLevel(axis(5));
             if (brake < 0.01f && pad.numAxes > 4)
@@ -122,7 +122,7 @@ PadPulse readBrowserPad(DriveInput& input)
 
 DriveInput readDrive(SDL_GameController* pad, PadPulse& pulse)
 {
-    const Uint8* keys = SDL_GetKeyboardState(nullptr);
+    const Uint8* keys{SDL_GetKeyboardState(nullptr)};
     DriveInput input;
     if (keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP])
         input.throttle = 1;
@@ -135,8 +135,8 @@ DriveInput readDrive(SDL_GameController* pad, PadPulse& pulse)
 #ifndef __EMSCRIPTEN__
     if (pad)
     {
-        float throttle = stickAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
-        float brake = stickAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+        float throttle{stickAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT)};
+        float brake{stickAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERLEFT)};
         if (throttle < 0)
             throttle = 0;
         if (brake < 0)
@@ -160,7 +160,7 @@ DriveInput readDrive(SDL_GameController* pad, PadPulse& pulse)
 #ifdef __EMSCRIPTEN__
     // SDL はブラウザのパッドをゲームコントローラと認識しないことが多い。
     // 標準マッピングを Gamepad API から直接読む。
-    PadPulse browser = readBrowserPad(input);
+    PadPulse browser{readBrowserPad(input)};
     pulse.camera = pulse.camera || browser.camera;
     pulse.reset = pulse.reset || browser.reset;
     pulse.pause = pulse.pause || browser.pause;
@@ -221,7 +221,7 @@ InputFrame SdlInput::poll()
         }
         else if (event.type == SDL_KEYDOWN && !event.key.repeat)
         {
-            SDL_Scancode code = event.key.keysym.scancode;
+            SDL_Scancode code{event.key.keysym.scancode};
             if (code == SDL_SCANCODE_ESCAPE)
                 frame.quit = true;
             else if (code == SDL_SCANCODE_R)

@@ -28,20 +28,20 @@ void buildCarBody(CpuMesh& mesh)
 
 void buildCarWheel(CpuMesh& mesh)
 {
-    const int seg = 14;
-    const float radius = 0.34f;
-    const float halfW = 0.15f;
+    const int seg{14};
+    const float radius{0.34f};
+    const float halfW{0.15f};
     const Vec3 tire{0.07f, 0.07f, 0.08f};
     const Vec3 rim{0.72f, 0.74f, 0.76f};
     for (int i = 0; i < seg; ++i)
     {
-        float a0 = float(i) / float(seg) * 6.2831853f;
-        float a1 = float(i + 1) / float(seg) * 6.2831853f;
-        float c0 = std::cos(a0);
-        float s0 = std::sin(a0);
-        float c1 = std::cos(a1);
-        float s1 = std::sin(a1);
-        Vec3 normal = normalize(Vec3{0, c0 + c1, s0 + s1});
+        float a0{float(i) / float(seg) * 6.2831853f};
+        float a1{float(i + 1) / float(seg) * 6.2831853f};
+        float c0{std::cos(a0)};
+        float s0{std::sin(a0)};
+        float c1{std::cos(a1)};
+        float s1{std::sin(a1)};
+        Vec3 normal{normalize(Vec3{0, c0 + c1, s0 + s1})};
         Vec3 a{-halfW, c0 * radius, s0 * radius};
         Vec3 b{halfW, c0 * radius, s0 * radius};
         Vec3 c{halfW, c1 * radius, s1 * radius};
@@ -49,7 +49,7 @@ void buildCarWheel(CpuMesh& mesh)
         mesh.addQuad(a, b, c, d, normal, tire);
         for (int side = -1; side <= 1; side += 2)
         {
-            float x = float(side) * halfW;
+            float x{float(side) * halfW};
             Vec3 nrm{float(side), 0, 0};
             Vec3 center{x, 0, 0};
             Vec3 p0{x, c0 * radius * 0.62f, s0 * radius * 0.62f};
@@ -76,9 +76,9 @@ Mat4 carModelMatrix(const Car& car, float pitch, float roll)
         std::cos(car.yaw) * std::cos(pitch),
     });
     Vec3 right0{std::cos(car.yaw), 0, -std::sin(car.yaw)};
-    Vec3 up0 = normalize(cross(forward, right0));
-    Vec3 right = normalize(right0 * std::cos(roll) + up0 * std::sin(roll));
-    Vec3 up = normalize(cross(forward, right));
+    Vec3 up0{normalize(cross(forward, right0))};
+    Vec3 right{normalize(right0 * std::cos(roll) + up0 * std::sin(roll))};
+    Vec3 up{normalize(cross(forward, right))};
     return basis({car.x, car.y, car.z}, right, up, forward);
 }
 

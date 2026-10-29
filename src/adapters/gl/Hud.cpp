@@ -23,21 +23,21 @@ void formatTime(char* buf, int size, float seconds)
         std::snprintf(buf, size, "--:--.---");
         return;
     }
-    int minutes = static_cast<int>(seconds / 60.0f);
-    float rest = seconds - float(minutes) * 60.0f;
+    int minutes{static_cast<int>(seconds / 60.0f)};
+    float rest{seconds - float(minutes) * 60.0f};
     std::snprintf(buf, size, "%d:%06.3f", minutes, rest);
 }
 
 void drawMinimap(Renderer& renderer, const Track& track, const Car& car)
 {
-    float size = 190.0f;
-    float x0 = 24.0f;
-    float y0 = float(renderer.height) - size - 28.0f;
+    float size{190.0f};
+    float x0{24.0f};
+    float y0{float(renderer.height) - size - 28.0f};
     renderer.addQuad(x0, y0, x0 + size, y0 + size, 0.02f, 0.03f, 0.05f, 0.78f);
-    float minX = track.samples[0].x;
-    float maxX = minX;
-    float minZ = track.samples[0].z;
-    float maxZ = minZ;
+    float minX{track.samples[0].x};
+    float maxX{minX};
+    float minZ{track.samples[0].z};
+    float maxZ{minZ};
     for (const TrackSample& sample : track.samples)
     {
         minX = std::min(minX, sample.x);
@@ -45,12 +45,12 @@ void drawMinimap(Renderer& renderer, const Track& track, const Car& car)
         minZ = std::min(minZ, sample.z);
         maxZ = std::max(maxZ, sample.z);
     }
-    float midX = (minX + maxX) * 0.5f;
-    float midZ = (minZ + maxZ) * 0.5f;
-    float span = std::max(maxX - minX, maxZ - minZ) * 1.12f;
+    float midX{(minX + maxX) * 0.5f};
+    float midZ{(minZ + maxZ) * 0.5f};
+    float span{std::max(maxX - minX, maxZ - minZ) * 1.12f};
     auto mapX = [&](float x) { return x0 + size * 0.5f + (x - midX) / span * (size - 18.0f); };
     auto mapY = [&](float z) { return y0 + size * 0.5f - (z - midZ) / span * (size - 18.0f); };
-    const int n = static_cast<int>(track.samples.size());
+    const int n{static_cast<int>(track.samples.size())};
     for (int i = 0; i < n; ++i)
     {
         const TrackSample& a = track.samples[i];
@@ -64,16 +64,16 @@ void drawMinimap(Renderer& renderer, const Track& track, const Car& car)
         }
         renderer.drawLine(mapX(a.x), mapY(a.z), mapX(b.x), mapY(b.z), 2.0f, r, g, bl, 1);
     }
-    float mx = mapX(car.x);
-    float my = mapY(car.z);
+    float mx{mapX(car.x)};
+    float my{mapY(car.z)};
     Vec3 nose{std::sin(car.yaw), 0, std::cos(car.yaw)};
     Vec3 side{std::cos(car.yaw), 0, -std::sin(car.yaw)};
-    float nx = mx + nose.x * 9.0f;
-    float ny = my - nose.z * 9.0f;
-    float lx = mx - nose.x * 5.0f + side.x * 5.0f;
-    float ly = my + nose.z * 5.0f - side.z * 5.0f;
-    float rx = mx - nose.x * 5.0f - side.x * 5.0f;
-    float ry = my + nose.z * 5.0f + side.z * 5.0f;
+    float nx{mx + nose.x * 9.0f};
+    float ny{my - nose.z * 9.0f};
+    float lx{mx - nose.x * 5.0f + side.x * 5.0f};
+    float ly{my + nose.z * 5.0f - side.z * 5.0f};
+    float rx{mx - nose.x * 5.0f - side.x * 5.0f};
+    float ry{my + nose.z * 5.0f + side.z * 5.0f};
     renderer.drawLine(lx, ly, nx, ny, 2.0f, 0.9f, 0.2f, 0.18f, 1);
     renderer.drawLine(rx, ry, nx, ny, 2.0f, 0.9f, 0.2f, 0.18f, 1);
     renderer.drawLine(lx, ly, rx, ry, 2.0f, 0.9f, 0.2f, 0.18f, 1);
@@ -86,7 +86,7 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     Renderer& hud = renderer;
     hud.beginHud();
     char line[96];
-    int kmh = static_cast<int>(std::lround(session.car().speed * 3.6f));
+    int kmh{static_cast<int>(std::lround(session.car().speed * 3.6f))};
     std::snprintf(line, sizeof(line), "%d KM/H", kmh);
     hud.drawText(24, 22, 4.0f, line, 0.95f, 0.96f, 0.98f, 1);
 
@@ -107,8 +107,8 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     std::snprintf(line, sizeof(line), "BEST %s", best);
     hud.drawText(24, 90, 2.0f, line, 0.75f, 0.8f, 0.7f, 1);
 
-    int percent = static_cast<int>(session.car().ground.s / session.track().length * 100.0f);
-    const char* corner = session.track().nameOf(session.car().ground.nameId);
+    int percent{static_cast<int>(session.car().ground.s / session.track().length * 100.0f)};
+    const char* corner{session.track().nameOf(session.car().ground.nameId)};
     if (session.car().ground.corner > 0 && corner[0])
     {
         std::snprintf(line, sizeof(line), "T%d %s  %d%%", session.car().ground.corner, corner, percent);

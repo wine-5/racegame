@@ -53,7 +53,7 @@ struct CpuMesh
         {
             std::swap(b, d);
         }
-        std::uint32_t base = static_cast<std::uint32_t>(vertices.size() / 9);
+        std::uint32_t base{static_cast<std::uint32_t>(vertices.size() / 9)};
         addVertex(a, n, color);
         addVertex(b, n, color);
         addVertex(c, n, color);
@@ -77,7 +77,7 @@ struct CpuMesh
         {
             std::swap(b, c);
         }
-        std::uint32_t base = static_cast<std::uint32_t>(vertices.size() / 9);
+        std::uint32_t base{static_cast<std::uint32_t>(vertices.size() / 9)};
         addVertex(a, n, color);
         addVertex(b, n, color);
         addVertex(c, n, color);

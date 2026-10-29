@@ -46,7 +46,7 @@ void GameSession::advance(double elapsedSec, const DriveInput& input)
         return;
     }
     m_accumulator += elapsedSec;
-    int guard = 0;
+    int guard{0};
     while (m_accumulator >= FIXED_STEP_SEC && guard < MAX_STEPS_PER_FRAME)
     {
         step(input);

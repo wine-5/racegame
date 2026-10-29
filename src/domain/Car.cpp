@@ -53,12 +53,12 @@ void Car::stepGrip(float dt)
     // たとえば横方向の速度、スリップ角、前後で違うグリップをここに足す。
     // アクセル、ブレーキ、壁との接触は update() 側にある。
     // ------------------------------------------------------------------------
-    float yawRate = 0;
+    float yawRate{0};
     if (std::fabs(speed) > 0.05f)
     {
         yawRate = (speed / WHEELBASE) * std::tan(steerAngle);
     }
-    float slow = clampf(1.0f - std::fabs(speed) / 8.0f, 0.0f, 1.0f);
+    float slow{clampf(1.0f - std::fabs(speed) / 8.0f, 0.0f, 1.0f)};
     yawRate += steerAngle * 0.9f * slow;
     yaw += yawRate * dt;
 
@@ -68,8 +68,8 @@ void Car::stepGrip(float dt)
 
 void Car::update(float dt, const DriveInput& input, const Track& track)
 {
-    float target = clampf(input.steer, -1.0f, 1.0f) * maxSteerAt(speed);
-    float step = STEER_RATE * dt;
+    float target{clampf(input.steer, -1.0f, 1.0f) * maxSteerAt(speed)};
+    float step{STEER_RATE * dt};
     steerAngle += clampf(target - steerAngle, -step, step);
     steerAngle = clampf(steerAngle, -0.6f, 0.6f);
 
@@ -81,10 +81,10 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
     {
         brakeHold = 0;
     }
-    bool reversing = brakeHold > 0.28f;
+    bool reversing{brakeHold > 0.28f};
 
-    float force = 0;
-    float speedBefore = speed;
+    float force{0};
+    float speedBefore{speed};
     if (input.brake > 0.05f && !reversing)
     {
         force -= input.brake * BRAKE * (speed >= 0 ? 1.0f : -1.0f);
@@ -95,7 +95,7 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
     }
     else if (input.throttle > 0.0f && speed > -0.4f)
     {
-        float ratio = clampf(speed / MAX_SPEED, 0.0f, 1.0f);
+        float ratio{clampf(speed / MAX_SPEED, 0.0f, 1.0f)};
         force += input.throttle * ACCEL * (1.0f - ratio * ratio);
     }
     force -= DRAG * speed * std::fabs(speed);
@@ -129,25 +129,25 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
 
     stepGrip(dt);
 
-    float preferS = ground.found ? ground.s : -1.0f;
+    float preferS{ground.found ? ground.s : -1.0f};
     ground = track.query(x, z, y, preferS);
     if (!ground.found)
     {
         return;
     }
 
-    const float wall = track.wallLateral();
+    const float wall{track.wallLateral()};
     if (std::fabs(ground.lateral) > wall)
     {
-        float sign = ground.lateral > 0 ? 1.0f : -1.0f;
-        float overflow = std::fabs(ground.lateral) - wall;
+        float sign{ground.lateral > 0 ? 1.0f : -1.0f};
+        float overflow{std::fabs(ground.lateral) - wall};
         x -= ground.rightX * sign * overflow;
         z -= ground.rightZ * sign * overflow;
         // 壁の外へ向いている分だけ速度を落とす。コースに沿っているときは壁を擦るだけ。
-        float facingOut = sign * (std::sin(yaw) * ground.rightX + std::cos(yaw) * ground.rightZ);
+        float facingOut{sign * (std::sin(yaw) * ground.rightX + std::cos(yaw) * ground.rightZ)};
         if (facingOut > 0.15f)
         {
-            float cap = 2.0f + 8.0f * (1.0f - facingOut);
+            float cap{2.0f + 8.0f * (1.0f - facingOut)};
             if (speed > cap)
             {
                 speed = cap;
@@ -156,8 +156,8 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
         ground.lateral = sign * wall;
     }
 
-    float bankLimit = track.halfWidth + track.curbWidth;
-    float bankLat = clampf(ground.lateral, -bankLimit, bankLimit);
+    float bankLimit{track.halfWidth + track.curbWidth};
+    float bankLat{clampf(ground.lateral, -bankLimit, bankLimit)};
     y = ground.centerY + bankLat * ground.cross;
     onAsphalt = std::fabs(ground.lateral) <= track.halfWidth + 0.15f;
 }

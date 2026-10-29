@@ -26,33 +26,33 @@ bool Track::finalize()
 TrackPose Track::query(float x, float z, float yHint, float preferS) const
 {
     TrackPose best;
-    float bestScore = 1.0e30f;
-    const int n = static_cast<int>(samples.size());
+    float bestScore{1.0e30f};
+    const int n{static_cast<int>(samples.size())};
     for (int i = 0; i < n; ++i)
     {
         const TrackSample& a = samples[i];
         const TrackSample& b = samples[(i + 1) % n];
-        float abx = b.x - a.x;
-        float abz = b.z - a.z;
-        float len2 = abx * abx + abz * abz;
+        float abx{b.x - a.x};
+        float abz{b.z - a.z};
+        float len2{abx * abx + abz * abz};
         if (len2 < 1e-4f)
         {
             continue;
         }
-        float t = ((x - a.x) * abx + (z - a.z) * abz) / len2;
+        float t{((x - a.x) * abx + (z - a.z) * abz) / len2};
         t = clampf(t, 0.0f, 1.0f);
-        float cx = a.x + abx * t;
-        float cz = a.z + abz * t;
-        float cy = a.y + (b.y - a.y) * t;
-        float dx = x - cx;
-        float dz = z - cz;
-        float dy = yHint - cy;
+        float cx{a.x + abx * t};
+        float cz{a.z + abz * t};
+        float cy{a.y + (b.y - a.y) * t};
+        float dx{x - cx};
+        float dz{z - cz};
+        float dy{yHint - cy};
         // 立体交差では平面距離より高さを優先する。6m 差なら、壁際にいても下の路面へ落ちない。
-        float score = dx * dx + dz * dz + dy * dy * 12.0f;
+        float score{dx * dx + dz * dz + dy * dy * 12.0f};
         if (preferS >= 0.0f && length > 1.0f)
         {
-            float along = a.s + std::sqrt(len2) * t;
-            float ds = std::fabs(along - preferS);
+            float along{a.s + std::sqrt(len2) * t};
+            float ds{std::fabs(along - preferS)};
             if (ds > length * 0.5f)
             {
                 ds = length - ds;
@@ -65,9 +65,9 @@ TrackPose Track::query(float x, float z, float yHint, float preferS) const
             continue;
         }
         bestScore = score;
-        float invLen = 1.0f / std::sqrt(len2);
-        float tx = abx * invLen;
-        float tz = abz * invLen;
+        float invLen{1.0f / std::sqrt(len2)};
+        float tx{abx * invLen};
+        float tz{abz * invLen};
         best.found = true;
         best.s = a.s + std::sqrt(len2) * t;
         if (best.s >= length)

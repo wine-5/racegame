@@ -63,7 +63,7 @@ inline float length(Vec3 a)
  */
 inline Vec3 normalize(Vec3 a)
 {
-    float len = length(a);
+    float len{length(a)};
     if (len < 1e-6f)
     {
         return {0, 1, 0};
@@ -94,7 +94,7 @@ inline float clampf(float v, float lo, float hi)
  */
 inline float wrapPi(float a)
 {
-    const float pi = 3.14159265f;
+    const float pi{3.14159265f};
     while (a > pi)
         a -= pi * 2.0f;
     while (a < -pi)
@@ -159,8 +159,8 @@ inline Mat4 translation(float x, float y, float z)
  */
 inline Mat4 rotationX(float angle)
 {
-    float c = std::cos(angle);
-    float s = std::sin(angle);
+    float c{std::cos(angle)};
+    float s{std::sin(angle)};
     Mat4 r;
     r.m[5] = c;
     r.m[6] = s;
@@ -176,8 +176,8 @@ inline Mat4 rotationX(float angle)
  */
 inline Mat4 rotationY(float yaw)
 {
-    float c = std::cos(yaw);
-    float s = std::sin(yaw);
+    float c{std::cos(yaw)};
+    float s{std::sin(yaw)};
     Mat4 r;
     // 列0 = ローカル +X（右）、列2 = ローカル +Z（前）
     r.m[0] = c;
@@ -197,7 +197,7 @@ inline Mat4 rotationY(float yaw)
  */
 inline Mat4 perspective(float fovYRadians, float aspect, float nearZ, float farZ)
 {
-    float f = 1.0f / std::tan(fovYRadians * 0.5f);
+    float f{1.0f / std::tan(fovYRadians * 0.5f)};
     Mat4 r;
     for (int i = 0; i < 16; ++i)
         r.m[i] = 0;
@@ -218,11 +218,11 @@ inline Mat4 perspective(float fovYRadians, float aspect, float nearZ, float farZ
  */
 inline Mat4 lookAt(Vec3 eye, Vec3 target, Vec3 up)
 {
-    Vec3 f = normalize(target - eye);
+    Vec3 f{normalize(target - eye)};
     // cross(f, up) だと、前が +z のとき画面の右が車の左になる。
     // 上方向は cross(s, f) のままなので、左右だけを直す。
-    Vec3 s = normalize(cross(up, f));
-    Vec3 u = cross(f, s);
+    Vec3 s{normalize(cross(up, f))};
+    Vec3 u{cross(f, s)};
     Mat4 r;
     r.m[0] = s.x;
     r.m[1] = u.x;

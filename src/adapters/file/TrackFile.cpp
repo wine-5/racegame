@@ -48,10 +48,10 @@ bool TrackFile::load(Track& track)
         Samples,
         Pit
     };
-    Mode mode = Mode::Top;
-    int expectNames = 0;
-    int expectSamples = 0;
-    int expectPit = 0;
+    Mode mode{Mode::Top};
+    int expectNames{0};
+    int expectSamples{0};
+    int expectPit{0};
     std::string line;
     while (std::getline(in, line))
     {
@@ -62,7 +62,7 @@ bool TrackFile::load(Track& track)
         std::istringstream ss(line);
         if (mode == Mode::Names)
         {
-            int id = 0;
+            int id{0};
             ss >> id;
             std::string name;
             std::getline(ss, name);
@@ -80,7 +80,7 @@ bool TrackFile::load(Track& track)
         if (mode == Mode::Samples)
         {
             TrackSample sample;
-            int bridge = 0;
+            int bridge{0};
             ss >> sample.x >> sample.z >> sample.y >> sample.cross >> bridge >> sample.corner >> sample.nameId;
             if (ss.fail())
             {

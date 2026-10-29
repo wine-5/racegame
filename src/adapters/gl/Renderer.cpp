@@ -138,11 +138,11 @@ static_assert(sizeof(FONT) / sizeof(FONT[0]) == sizeof(GLYPH_ORDER) - 1, "glyph 
 
 GLuint compileShader(GLenum type, const char* source)
 {
-    const char* parts[] = {VERSION, source};
-    GLuint shader = glCreateShader(type);
+    const char* parts[]{VERSION, source};
+    GLuint shader{glCreateShader(type)};
     glShaderSource(shader, 2, parts, nullptr);
     glCompileShader(shader);
-    GLint ok = 0;
+    GLint ok{0};
     glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
     if (!ok)
     {
@@ -156,19 +156,19 @@ GLuint compileShader(GLenum type, const char* source)
 
 GLuint linkProgram(const char* vs, const char* fs)
 {
-    GLuint vertex = compileShader(GL_VERTEX_SHADER, vs);
-    GLuint fragment = compileShader(GL_FRAGMENT_SHADER, fs);
+    GLuint vertex{compileShader(GL_VERTEX_SHADER, vs)};
+    GLuint fragment{compileShader(GL_FRAGMENT_SHADER, fs)};
     if (!vertex || !fragment)
     {
         return 0;
     }
-    GLuint program = glCreateProgram();
+    GLuint program{glCreateProgram()};
     glAttachShader(program, vertex);
     glAttachShader(program, fragment);
     glLinkProgram(program);
     glDeleteShader(vertex);
     glDeleteShader(fragment);
-    GLint ok = 0;
+    GLint ok{0};
     glGetProgramiv(program, GL_LINK_STATUS, &ok);
     if (!ok)
     {
@@ -186,7 +186,7 @@ int glyphIndex(char c)
     {
         c = static_cast<char>(c - 'a' + 'A');
     }
-    const char* found = std::strchr(GLYPH_ORDER, c);
+    const char* found{std::strchr(GLYPH_ORDER, c)};
     if (!found)
     {
         return -1;
@@ -283,44 +283,44 @@ void Renderer::beginHud()
 
 void Renderer::addQuad(float x0, float y0, float x1, float y1, float r, float g, float b, float a)
 {
-    unsigned base = static_cast<unsigned>(hudVerts.size() / 6);
+    unsigned base{static_cast<unsigned>(hudVerts.size() / 6)};
     float verts[] = {
         x0, y0, r, g, b, a, x1, y0, r, g, b, a, x1, y1, r, g, b, a, x0, y1, r, g, b, a,
     };
     hudVerts.insert(hudVerts.end(), verts, verts + 24);
-    unsigned idx[] = {base, base + 1, base + 2, base, base + 2, base + 3};
+    unsigned idx[]{base, base + 1, base + 2, base, base + 2, base + 3};
     hudIndices.insert(hudIndices.end(), idx, idx + 6);
 }
 
 void Renderer::drawLine(float x0, float y0, float x1, float y1, float thickness, float r, float g, float b, float a)
 {
-    float dx = x1 - x0;
-    float dy = y1 - y0;
-    float len = std::sqrt(dx * dx + dy * dy);
+    float dx{x1 - x0};
+    float dy{y1 - y0};
+    float len{std::sqrt(dx * dx + dy * dy)};
     if (len < 0.001f)
     {
         return;
     }
     dx /= len;
     dy /= len;
-    float px = -dy * thickness * 0.5f;
-    float py = dx * thickness * 0.5f;
-    unsigned base = static_cast<unsigned>(hudVerts.size() / 6);
+    float px{-dy * thickness * 0.5f};
+    float py{dx * thickness * 0.5f};
+    unsigned base{static_cast<unsigned>(hudVerts.size() / 6)};
     float verts[] = {
         x0 + px, y0 + py, r, g, b, a, x0 - px, y0 - py, r, g, b, a,
         x1 - px, y1 - py, r, g, b, a, x1 + px, y1 + py, r, g, b, a,
     };
     hudVerts.insert(hudVerts.end(), verts, verts + 24);
-    unsigned idx[] = {base, base + 1, base + 2, base, base + 2, base + 3};
+    unsigned idx[]{base, base + 1, base + 2, base, base + 2, base + 3};
     hudIndices.insert(hudIndices.end(), idx, idx + 6);
 }
 
 void Renderer::drawText(float x, float y, float scale, const char* text, float r, float g, float b, float a)
 {
-    float pen = x;
+    float pen{x};
     for (const char* cursor = text; *cursor; ++cursor)
     {
-        char c = *cursor;
+        char c{*cursor};
         if (c >= 'a' && c <= 'z')
         {
             c = static_cast<char>(c - 'a' + 'A');
@@ -330,13 +330,13 @@ void Renderer::drawText(float x, float y, float scale, const char* text, float r
             pen += 4.0f * scale;
             continue;
         }
-        int index = glyphIndex(c);
+        int index{glyphIndex(c)};
         if (index < 0)
         {
             pen += 6.0f * scale;
             continue;
         }
-        const std::uint8_t* rows = FONT[index];
+        const std::uint8_t* rows{FONT[index]};
         for (int row = 0; row < 7; ++row)
         {
             for (int col = 0; col < 5; ++col)
@@ -345,8 +345,8 @@ void Renderer::drawText(float x, float y, float scale, const char* text, float r
                 {
                     continue;
                 }
-                float x0 = pen + float(col) * scale;
-                float y0 = y + float(row) * scale;
+                float x0{pen + float(col) * scale};
+                float y0{y + float(row) * scale};
                 addQuad(x0, y0, x0 + scale, y0 + scale, r, g, b, a);
             }
         }
@@ -364,7 +364,7 @@ void Renderer::flushHud()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glUseProgram(hudProgram);
-    Mat4 ortho = orthoTopLeft(float(width), float(height));
+    Mat4 ortho{orthoTopLeft(float(width), float(height))};
     glUniformMatrix4fv(uOrtho, 1, GL_FALSE, ortho.m);
     glBindVertexArray(hudVao);
     glBindBuffer(GL_ARRAY_BUFFER, hudVbo);

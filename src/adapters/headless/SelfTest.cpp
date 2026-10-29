@@ -20,22 +20,22 @@ int runSelfTest(const Track& track)
 {
     Car car;
     car.reset(track);
-    float travelled = 0;
-    float prevS = -1;
-    float maxLat = 0;
+    float travelled{0};
+    float prevS{-1};
+    float maxLat{0};
     for (int step = 0; step < 60 * 50; ++step)
     {
-        TrackPose pose = track.query(car.x, car.z, car.y, car.ground.found ? car.ground.s : -1.0f);
-        float lookS = pose.s + 70.0f;
+        TrackPose pose{track.query(car.x, car.z, car.y, car.ground.found ? car.ground.s : -1.0f)};
+        float lookS{pose.s + 70.0f};
         if (lookS >= track.length)
         {
             lookS -= track.length;
         }
-        int nearest = 0;
-        float nearestGap = 1.0e9f;
+        int nearest{0};
+        float nearestGap{1.0e9f};
         for (int i = 0; i < static_cast<int>(track.samples.size()); i += 2)
         {
-            float gap = std::fabs(track.samples[i].s - lookS);
+            float gap{std::fabs(track.samples[i].s - lookS)};
             if (gap > track.length * 0.5f)
             {
                 gap = track.length - gap;
@@ -46,13 +46,13 @@ int runSelfTest(const Track& track)
                 nearest = i;
             }
         }
-        int next = (nearest + 1) % static_cast<int>(track.samples.size());
-        float tx = track.samples[next].x - track.samples[nearest].x;
-        float tz = track.samples[next].z - track.samples[nearest].z;
-        float targetYaw = std::atan2(tx, tz);
-        float errNow = wrapPi(pose.yaw - car.yaw);
-        float errAhead = wrapPi(targetYaw - car.yaw);
-        float bend = std::fabs(wrapPi(targetYaw - pose.yaw));
+        int next{(nearest + 1) % static_cast<int>(track.samples.size())};
+        float tx{track.samples[next].x - track.samples[nearest].x};
+        float tz{track.samples[next].z - track.samples[nearest].z};
+        float targetYaw{std::atan2(tx, tz)};
+        float errNow{wrapPi(pose.yaw - car.yaw)};
+        float errAhead{wrapPi(targetYaw - car.yaw)};
+        float bend{std::fabs(wrapPi(targetYaw - pose.yaw))};
         DriveInput input;
         input.steer = clampf(errNow * 2.6f + errAhead * 0.5f, -1.0f, 1.0f);
         input.steer = clampf(input.steer - pose.lateral * 0.12f, -1.0f, 1.0f);
@@ -77,7 +77,7 @@ int runSelfTest(const Track& track)
         pose = track.query(car.x, car.z, car.y, car.ground.found ? car.ground.s : -1.0f);
         if (prevS >= 0)
         {
-            float ds = pose.s - prevS;
+            float ds{pose.s - prevS};
             if (ds < -track.length * 0.5f)
                 ds += track.length;
             if (ds > track.length * 0.5f)
