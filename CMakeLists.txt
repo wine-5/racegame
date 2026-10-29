@@ -33,6 +33,7 @@ add_library(racecore STATIC
     src/domain/track.cpp
     src/domain/car.cpp
     src/domain/lap_timer.cpp
+    src/application/game_session.cpp
 )
 target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
