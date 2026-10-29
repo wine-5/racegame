@@ -44,6 +44,7 @@ add_executable(racegame
     src/adapters/gl/car_mesh.cpp
     src/adapters/gl/render.cpp
     src/adapters/gl/track_mesh.cpp
+    src/adapters/sdl/sdl_input.cpp
 )
 target_link_libraries(racegame PRIVATE racecore)
 
