@@ -1,8 +1,10 @@
 #pragma once
 
+#include "adapters/gl/Bursts.hpp"
 #include "adapters/gl/ChaseCamera.hpp"
 #include "adapters/gl/Hud.hpp"
 #include "adapters/gl/LightTrail.hpp"
+#include "adapters/gl/PortScenery.hpp"
 #include "adapters/gl/PostProcess.hpp"
 #include "adapters/gl/Renderer.hpp"
 #include "adapters/gl/Scenery.hpp"
@@ -40,6 +42,13 @@ public:
     void loadStage(const domain::Track& track, Scenery scenery);
 
     /**
+     * @brief 景色に立てた街灯の周回位置
+     * @details loadStage のあと GameSession::setLampSpots に渡す。街灯の無いステージでは空。
+     * @return 周回位置（m）の並び
+     */
+    const std::vector<float>& lampSpots() const { return m_lampSpots; }
+
+    /**
      * @brief 1 フレーム描く
      * @param session 描くゲームの状態
      * @param dt 前のフレームからの経過時間（秒）。カメラの補間に使う
@@ -58,6 +67,7 @@ public:
         m_skidMarks.clear();
         m_sparks.clear();
         m_trail.clear();
+        m_bursts.clear();
         m_skidMarksDirty = true;
     }
 
@@ -79,8 +89,29 @@ private:
     /// 車と影とタイヤを描く
     void drawCar(const domain::Car& car, const domain::Track& track);
 
-    /// カメラに近い街灯と車のライトを選んで Renderer に渡す
-    void chooseLights(const domain::Car& car);
+    /// 弾き飛ばせる小物を描く
+    void drawProps(const domain::Props& props);
+
+    /**
+     * @brief カメラに近い街灯と車のライトを選んで Renderer に渡す
+     * @details ドリフトで灯した街灯は、倍率の色で明るくする。
+     * @param car 車の状態
+     * @param lamps 街灯の状態
+     */
+    void chooseLights(const domain::Car& car, const domain::StreetLamps& lamps);
+
+    /**
+     * @brief 街灯が灯った瞬間と、小物を弾いた瞬間に光の粒を散らす
+     * @param session ゲームの状態
+     */
+    void react(const application::GameSession& session);
+
+    /**
+     * @brief 街灯の灯りを光る板として追加する
+     * @param lamps 街灯の状態
+     * @param out 追加先
+     */
+    void collectLampHalos(const domain::StreetLamps& lamps, std::vector<Billboard>& out) const;
 
     /**
      * @brief 今のゲームの様子から、画面全体の効果の強さを決める
@@ -96,16 +127,25 @@ private:
     int m_lastMultiplier{1};
     float m_lastSinceResult{1e9f};
     Scenery m_scenery = Scenery::Circuit;
-    std::vector<PointLight> m_lamps;   // 景色に立つ街灯などの光
-    std::vector<PointLight> m_lights;  // このフレームで当てる光
+    std::vector<PointLight> m_lamps;      // 景色に立つ街灯などの光
+    std::vector<PointLight> m_lampWork;   // 灯した色を反映した光。並べ替えて使う
+    std::vector<PointLight> m_lights;     // このフレームで当てる光
+    std::vector<LampFixture> m_fixtures;  // 道沿いの街灯
+    std::vector<float> m_lampSpots;       // 道沿いの街灯の周回位置
+    std::vector<int> m_shownTier;  // 街灯ごとに、光の粒を散らしたときの倍率。0 は消えている
+    int m_lastHits{};
+    float m_lastSinceAllLit{1e9f};
     GpuMesh m_course;
     GpuMesh m_body;
     GpuMesh m_wheel;
     GpuMesh m_shadow;
+    GpuMesh m_cone;
+    GpuMesh m_drum;
     ChaseCamera m_camera;
     TireSmoke m_smoke;
     Sparks m_sparks;
     LightTrail m_trail;
+    Bursts m_bursts;
     std::vector<Billboard> m_glows;  // 光る板（火花・光の尾）
     SkidMarks m_skidMarks;
     CpuMesh m_skidMesh;

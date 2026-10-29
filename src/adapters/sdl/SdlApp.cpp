@@ -145,6 +145,7 @@ bool SdlApp::loadStage(int index)
     }
     m_stageIndex = index;
     m_view.loadStage(m_session.track(), stage.scenery);
+    m_session.setLampSpots(m_view.lampSpots());
     m_driftSound.reset();
     SDL_Log("stage: %s", stage.name.c_str());
     return true;

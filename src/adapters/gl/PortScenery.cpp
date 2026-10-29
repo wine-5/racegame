@@ -46,7 +46,9 @@ constexpr float CONTAINER_SHORT = 6.06f;
 constexpr float CONTAINER_LONG = 12.19f;
 constexpr float LAMP_SPACING = 30.0f;
 constexpr float LAMP_HEIGHT = 8.5f;
-constexpr float LAMP_RADIUS = 34.0f;
+constexpr float LAMP_RADIUS = 30.0f;
+constexpr float LAMP_POWER = 1.5f;  // 消えている街灯の明るさ。ドリフトで灯すと、倍率の色で明るくなる
+const Vec3 LAMP_GLASS{0.42f, 0.4f, 0.36f};  // 消えている街灯の灯りの色
 constexpr float NEON_SPACING = 22.0f;
 
 /// 毎回同じ並びになる乱数
@@ -264,7 +266,8 @@ void addBarrier(CpuMesh& mesh, const std::vector<Frame>& frames, float sideSign,
 }
 
 /// 街灯 1 本。柱は壁の外に立ち、腕を道の上へ伸ばす
-void addLamp(CpuMesh& mesh, const Frame& frame, float sideSign, std::vector<PointLight>& lamps)
+void addLamp(CpuMesh& mesh, const Frame& frame, float sideSign, std::vector<PointLight>& lamps,
+             std::vector<LampFixture>& fixtures)
 {
     Vec3 outward{frame.right * sideSign};
     Vec3 foot{side(frame, sideSign * (frame.wall + CONTAINER_DEPTH + 0.6f), 0)};
@@ -275,8 +278,9 @@ void addLamp(CpuMesh& mesh, const Frame& frame, float sideSign, std::vector<Poin
     Vec3 arm{foot - outward * (reach * 0.5f) + Vec3{0, LAMP_HEIGHT, 0}};
     addOrientedBox(mesh, arm, frame.forward * 0.1f, Vec3{0, 0.1f, 0}, outward * (reach * 0.5f), pole);
     Vec3 head{foot - outward * reach + Vec3{0, LAMP_HEIGHT - 0.15f, 0}};
-    addOrientedBox(mesh, head, frame.forward * 0.45f, Vec3{0, 0.1f, 0}, outward * 0.3f, glow(Vec3{1.0f, 0.86f, 0.62f}));
-    lamps.push_back({head - Vec3{0, 0.6f, 0}, SODIUM * 2.4f, LAMP_RADIUS});
+    addOrientedBox(mesh, head, frame.forward * 0.45f, Vec3{0, 0.1f, 0}, outward * 0.3f, LAMP_GLASS);
+    fixtures.push_back({frame.s, head, lamps.size()});
+    lamps.push_back({head - Vec3{0, 0.6f, 0}, SODIUM * LAMP_POWER, LAMP_RADIUS});
 }
 
 /// 高い照明塔。広場の真ん中に立てて広く照らす
@@ -437,10 +441,12 @@ domain::Vec3 portRoadColor()
     return ROAD;
 }
 
-void buildPortScenery(const Track& track, CpuMesh& mesh, std::vector<PointLight>& lamps)
+void buildPortScenery(const Track& track, CpuMesh& mesh, std::vector<PointLight>& lamps,
+                      std::vector<LampFixture>& fixtures)
 {
     mesh = CpuMesh{};
     lamps.clear();
+    fixtures.clear();
     std::vector<Frame> frames{makeFrames(track)};
     if (frames.size() < 3)
     {
@@ -542,12 +548,12 @@ void buildPortScenery(const Track& track, CpuMesh& mesh, std::vector<PointLight>
             Vec3 head{foot + frame.right * 1.6f + Vec3{0, LAMP_HEIGHT - 0.15f, 0}};
             addOrientedBox(mesh, foot + frame.right * 0.8f + Vec3{0, LAMP_HEIGHT, 0}, frame.forward * 0.1f,
                            Vec3{0, 0.1f, 0}, frame.right * 0.8f, Vec3{0.26f, 0.27f, 0.3f});
-            addOrientedBox(mesh, head, frame.forward * 0.45f, Vec3{0, 0.1f, 0}, frame.right * 0.3f,
-                           glow(Vec3{1.0f, 0.86f, 0.62f}));
-            lamps.push_back({head - Vec3{0, 0.6f, 0}, SODIUM * 2.4f, LAMP_RADIUS});
+            addOrientedBox(mesh, head, frame.forward * 0.45f, Vec3{0, 0.1f, 0}, frame.right * 0.3f, LAMP_GLASS);
+            fixtures.push_back({frame.s, head, lamps.size()});
+            lamps.push_back({head - Vec3{0, 0.6f, 0}, SODIUM * LAMP_POWER, LAMP_RADIUS});
             continue;
         }
-        addLamp(mesh, frame, sideSign, lamps);
+        addLamp(mesh, frame, sideSign, lamps, fixtures);
     }
 
     // 区間ごとの目印
