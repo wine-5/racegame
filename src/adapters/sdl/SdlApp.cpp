@@ -303,6 +303,10 @@ void SdlApp::frame()
     int drawableW{};
     int drawableH{};
     SDL_GL_GetDrawableSize(m_window, &drawableW, &drawableH);
+#ifdef __EMSCRIPTEN__
+    // fitCanvas で変えたキャンバスの大きさを SDL は知らないので、キャンバスから直接読む
+    emscripten_get_canvas_element_size("#canvas", &drawableW, &drawableH);
+#endif
     if (m_screen == Screen::Title)
     {
         gl::TitleScreen title;
