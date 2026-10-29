@@ -30,6 +30,10 @@ RUN apt-get update && apt-get install -y \
 RUN embuilder build sdl2 sdl2_image:formats=png sdl2_mixer \
     && chown -R emscripten:emscripten /emsdk/upstream/emscripten/cache
 
+# ~/.claude のボリュームを emscripten ユーザーの持ち物で作るため、先にフォルダを用意する。
+# 無いと Docker が root の持ち物で作り、Claude Code が書き込めなくなる。
+RUN mkdir -p /home/emscripten/.claude && chown emscripten:emscripten /home/emscripten/.claude
+
 # 日本語のファイル名を扱えるようにする
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8

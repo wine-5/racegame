@@ -8,6 +8,12 @@
     // Claude Codeのroot権限エラーを回避する
     "remoteUser": "emscripten",
 
+    // Claude Code のログイン情報とメモリ（~/.claude）をボリュームに置く。
+    // コンテナを Rebuild しても消えない。
+    "mounts": [
+        "source=racegame-claude-config,target=/home/emscripten/.claude,type=volume"
+    ],
+
     // Linux ネイティブ版のゲームウィンドウを表示するための軽量デスクトップ
     "features": {
         "ghcr.io/devcontainers/features/desktop-lite:1": {}
