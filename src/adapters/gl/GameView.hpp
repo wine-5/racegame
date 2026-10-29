@@ -1,6 +1,7 @@
 #pragma once
 
 #include "adapters/gl/ChaseCamera.hpp"
+#include "adapters/gl/Hud.hpp"
 #include "adapters/gl/Renderer.hpp"
 #include "adapters/gl/Scenery.hpp"
 #include "adapters/gl/SkidMarks.hpp"
@@ -41,8 +42,10 @@ public:
      * @param dt 前のフレームからの経過時間（秒）。カメラの補間に使う
      * @param width 描画先の幅（ピクセル）
      * @param height 描画先の高さ（ピクセル）
+     * @param title タイトル画面を出すなら、その中身。遊んでいるときは nullptr
      */
-    void render(const application::GameSession& session, float dt, int width, int height);
+    void render(const application::GameSession& session, float dt, int width, int height,
+                const TitleScreen* title = nullptr);
 
     /// カメラを補間せずに車の後ろへ戻し、煙などの演出を消す。リセットのあとに呼ぶ
     void snapCamera()
@@ -90,6 +93,7 @@ private:
     bool m_skidMarksDirty{};
     std::vector<Billboard> m_billboards;
     bool m_showHelp{true};
+    float m_time{};  // 描き始めてからの時間（秒）
 };
 
 }  // namespace adapters::gl

@@ -86,8 +86,10 @@ void GameView::loadStage(const Track& track, Scenery scenery)
     snapCamera();
 }
 
-void GameView::render(const application::GameSession& session, float dt, int width, int height)
+void GameView::render(const application::GameSession& session, float dt, int width, int height,
+                      const TitleScreen* title)
 {
+    m_time += dt;
     m_camera.update(session.car(), session.track(), dt);
     m_smoke.update(session.car(), dt, !session.paused());
     if (m_skidMarks.update(session.car(), !session.paused()) || m_skidMarksDirty)
@@ -120,7 +122,14 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_smoke.collect(m_billboards, m_camera.eye());
     m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
 
-    drawHud(m_renderer, session, m_camera, m_showHelp, m_scenery == Scenery::Circuit);
+    if (title)
+    {
+        drawTitle(m_renderer, *title, m_time);
+    }
+    else
+    {
+        drawHud(m_renderer, session, m_camera, m_showHelp, m_scenery == Scenery::Circuit);
+    }
 }
 
 void GameView::chooseLights(const Car& car)

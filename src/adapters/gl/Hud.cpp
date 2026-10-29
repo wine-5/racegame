@@ -151,6 +151,61 @@ void drawDrift(Renderer& renderer, const DriftScore& drift, const Car& car)
 
 }  // namespace
 
+void drawTitle(Renderer& renderer, const TitleScreen& title, float time)
+{
+    renderer.beginHud();
+    const float w{float(renderer.width())};
+    const float h{float(renderer.height())};
+    // 画面全体を少し暗くし、上下に帯を入れて映画のように見せる
+    renderer.addQuad(0, 0, w, h, 0.0f, 0.0f, 0.02f, 0.35f);
+    renderer.addQuad(0, 0, w, h * 0.09f, 0, 0, 0, 0.85f);
+    renderer.addQuad(0, h * 0.91f, w, h, 0, 0, 0, 0.85f);
+
+    // 題名。少しずらして重ね描きし、ネオンのにじみに見せる
+    const char* name{"NIGHT PORT DRIFT"};
+    float scale{std::fmin(w / 140.0f, 11.0f)};
+    float y{h * 0.24f};
+    for (int i{3}; i >= 1; --i)
+    {
+        float spread{float(i) * scale * 0.35f};
+        float x{(w - textWidth(name, scale)) * 0.5f};
+        renderer.drawText(x - spread, y, scale, name, 1.0f, 0.15f, 0.65f, 0.10f);
+        renderer.drawText(x + spread, y, scale, name, 0.2f, 0.6f, 1.0f, 0.10f);
+    }
+    drawCentered(renderer, y, scale, name, 1.0f, 0.86f, 0.96f, 1.0f);
+    float lineY{y + scale * 9.0f};
+    float lineW{textWidth(name, scale) * 0.8f};
+    renderer.addQuad((w - lineW) * 0.5f, lineY, (w + lineW) * 0.5f, lineY + 3, 0.2f, 0.9f, 1.0f, 0.9f);
+    drawCentered(renderer, lineY + 18, scale * 0.28f, "HOLD THE BUTTON TO DRIFT", 0.75f, 0.85f, 1.0f, 0.9f);
+
+    // 始め方。ゆっくり点滅させる
+    float blink{0.55f + 0.45f * std::sin(time * 4.0f)};
+    drawCentered(renderer, h * 0.62f, scale * 0.42f, "PRESS SPACE / CLICK TO START", 1.0f, 0.95f, 0.6f, blink);
+
+    // ステージの一覧
+    float listY{h * 0.74f};
+    float itemScale{scale * 0.3f};
+    float gap{itemScale * 6.0f * 10.0f};
+    float total{gap * float(title.stages.size())};
+    float x0{(w - total) * 0.5f};
+    char line[64];
+    for (std::size_t i{}; i < title.stages.size(); ++i)
+    {
+        bool chosen{static_cast<int>(i) == title.selected};
+        std::snprintf(line, sizeof(line), "%d %s", static_cast<int>(i) + 1, title.stages[i].c_str());
+        float x{x0 + gap * float(i) + (gap - textWidth(line, itemScale)) * 0.5f};
+        if (chosen)
+        {
+            renderer.addQuad(x - 10, listY - 8, x + textWidth(line, itemScale) + 6, listY + itemScale * 7 + 8, 1.0f,
+                             0.2f, 0.65f, 0.35f);
+        }
+        renderer.drawText(x, listY, itemScale, line, 1, 1, 1, chosen ? 1.0f : 0.5f);
+    }
+    drawCentered(renderer, h * 0.93f + 4, scale * 0.22f, "1-3 STAGE   F FULLSCREEN   ESC TITLE", 0.7f, 0.75f, 0.85f,
+                 0.8f);
+    renderer.flushHud();
+}
+
 void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& camera, bool showHelp, bool showCredit)
 {
     Renderer& hud = renderer;
