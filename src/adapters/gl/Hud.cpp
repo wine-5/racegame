@@ -118,8 +118,11 @@ void drawDrift(Renderer& renderer, const DriftScore& drift, const Car& car)
         float alpha{drift.drifting() ? 1.0f : 0.55f};
         std::snprintf(line, sizeof(line), "%d", static_cast<int>(drift.chainPoints()));
         drawCentered(renderer, 28, 5.0f, line, r, g, b, alpha);
+        // 倍率が上がった直後は大きく弾ませる
+        float pop{1.0f + 0.8f * std::exp(-drift.sinceMultiplierUp() * 7.0f)};
+        float scale{3.0f * pop};
         std::snprintf(line, sizeof(line), "X%d", drift.multiplier());
-        drawCentered(renderer, 72, 3.0f, line, r, g, b, alpha);
+        drawCentered(renderer, 72 - (scale - 3.0f) * 3.5f, scale, line, r, g, b, alpha);
 
         // 角度のゲージ
         float angle{std::fabs(car.slipAngle()) * RAD_TO_DEG};
