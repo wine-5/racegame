@@ -99,6 +99,9 @@ private:
     /// ブラウザでは、キャンバスの画素数をページの大きさに合わせる
     void fitCanvas();
 
+    /// 全画面とウィンドウを切り替える（ネイティブのみ）
+    void toggleFullscreen();
+
     application::GameSession& m_session;
     std::vector<Stage> m_stages;
     int m_stageIndex{};

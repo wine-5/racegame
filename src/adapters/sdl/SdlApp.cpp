@@ -189,6 +189,15 @@ void SdlApp::fitCanvas()
 #endif
 }
 
+void SdlApp::toggleFullscreen()
+{
+#ifndef __EMSCRIPTEN__
+    // ブラウザでは shell.html が全画面を切り替える
+    bool full{(SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0};
+    SDL_SetWindowFullscreen(m_window, full ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+#endif
+}
+
 void SdlApp::frameThunk(void* self)
 {
     static_cast<SdlApp*>(self)->frame();
@@ -208,6 +217,10 @@ void SdlApp::frame()
     if (input.camera)
     {
         m_view.cycleCamera();
+    }
+    if (input.fullscreen)
+    {
+        toggleFullscreen();
     }
     if (input.help)
     {
