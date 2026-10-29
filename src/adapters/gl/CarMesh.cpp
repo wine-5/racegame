@@ -1,4 +1,4 @@
-#include "adapters/gl/car_mesh.hpp"
+#include "adapters/gl/CarMesh.hpp"
 
 #include <cmath>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "domain/track.hpp"
+#include "domain/Track.hpp"
 
 // ポート: コースをどこから持ってくるか。
 // 中心はこのインターフェースだけを知り、ファイル・埋め込みデータ・テスト用の

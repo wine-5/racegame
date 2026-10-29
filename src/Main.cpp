@@ -1,9 +1,9 @@
-#include "adapters/file/track_file.hpp"
-#include "adapters/gl/car_mesh.hpp"
-#include "adapters/gl/render.hpp"
-#include "adapters/gl/track_mesh.hpp"
-#include "adapters/sdl/sdl_input.hpp"
-#include "application/game_session.hpp"
+#include "adapters/file/TrackFile.hpp"
+#include "adapters/gl/CarMesh.hpp"
+#include "adapters/gl/Renderer.hpp"
+#include "adapters/gl/TrackMesh.hpp"
+#include "adapters/sdl/SdlInput.hpp"
+#include "application/GameSession.hpp"
 
 #include <SDL.h>
 #include <SDL_image.h>

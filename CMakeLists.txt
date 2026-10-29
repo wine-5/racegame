@@ -30,21 +30,21 @@ message(STATUS "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 #   ビルドで守るための分割。
 # ---------------------------------------------------------------------------
 add_library(racecore STATIC
-    src/domain/track.cpp
-    src/domain/car.cpp
-    src/domain/lap_timer.cpp
-    src/application/game_session.cpp
+    src/domain/Track.cpp
+    src/domain/Car.cpp
+    src/domain/LapTimer.cpp
+    src/application/GameSession.cpp
 )
 target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 # racegame: 外側のアダプター（SDL・GL）と、それを組み立てる main。
 add_executable(racegame
-    src/main.cpp
-    src/adapters/file/track_file.cpp
-    src/adapters/gl/car_mesh.cpp
-    src/adapters/gl/render.cpp
-    src/adapters/gl/track_mesh.cpp
-    src/adapters/sdl/sdl_input.cpp
+    src/Main.cpp
+    src/adapters/file/TrackFile.cpp
+    src/adapters/gl/CarMesh.cpp
+    src/adapters/gl/Renderer.cpp
+    src/adapters/gl/TrackMesh.cpp
+    src/adapters/sdl/SdlInput.cpp
 )
 target_link_libraries(racegame PRIVATE racecore)
 

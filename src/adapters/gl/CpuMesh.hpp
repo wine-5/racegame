@@ -1,6 +1,6 @@
 #pragma once
 
-#include "domain/geom.hpp"
+#include "domain/Geom.hpp"
 
 #include <cstdint>
 #include <utility>

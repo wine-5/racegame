@@ -1,6 +1,6 @@
 #pragma once
 
-#include "domain/car.hpp"
+#include "domain/Car.hpp"
 
 #include <SDL.h>
 

@@ -1,4 +1,4 @@
-#include "adapters/gl/track_mesh.hpp"
+#include "adapters/gl/TrackMesh.hpp"
 
 #include <algorithm>
 #include <cmath>

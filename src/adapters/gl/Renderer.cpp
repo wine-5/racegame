@@ -1,4 +1,4 @@
-#include "adapters/gl/render.hpp"
+#include "adapters/gl/Renderer.hpp"
 
 #include <SDL.h>
 

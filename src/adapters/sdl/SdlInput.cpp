@@ -1,4 +1,4 @@
-#include "adapters/sdl/sdl_input.hpp"
+#include "adapters/sdl/SdlInput.hpp"
 
 #include <algorithm>
 #include <cmath>

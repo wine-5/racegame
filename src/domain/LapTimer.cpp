@@ -1,4 +1,4 @@
-#include "domain/lap_timer.hpp"
+#include "domain/LapTimer.hpp"
 
 void LapTimer::tick(float s, float length, float dt) {
     if (prevS >= 0) {

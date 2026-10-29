@@ -1,4 +1,4 @@
-#include "application/game_session.hpp"
+#include "application/GameSession.hpp"
 
 namespace {
 
