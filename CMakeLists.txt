@@ -47,6 +47,7 @@ add_executable(racegame
     src/adapters/gl/Hud.cpp
     src/adapters/gl/Renderer.cpp
     src/adapters/gl/TrackMesh.cpp
+    src/adapters/headless/SelfTest.cpp
     src/adapters/sdl/SdlInput.cpp
 )
 target_link_libraries(racegame PRIVATE racecore)
