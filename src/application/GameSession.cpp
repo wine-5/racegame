@@ -13,9 +13,8 @@ namespace
 
 constexpr double MAX_FRAME_SEC = 0.25;
 constexpr int MAX_STEPS_PER_FRAME = 8;
-constexpr float LAMP_BONUS = 300.0f;         // 街灯を 1 本灯すごとの点
-constexpr float ALL_LAMPS_BONUS = 20000.0f;  // 1 周で全部灯したときの点
-constexpr float PROP_BONUS = 500.0f;         // 小物を 1 つ弾くごとの点
+constexpr float LAMP_BONUS = 300.0f;  // 街灯を 1 本灯すごとの点
+constexpr float PROP_BONUS = 500.0f;  // 小物を 1 つ弾くごとの点
 
 }  // namespace
 
@@ -87,7 +86,7 @@ void GameSession::step(const PlayerControls& controls)
     m_drift.addBonus(LAMP_BONUS * float(m_lamps.ignitions() - ignitionsBefore));
     if (m_lamps.takeAllLitBonus())
     {
-        m_drift.addBonus(ALL_LAMPS_BONUS);
+        m_drift.addBonus(domain::StreetLamps::ALL_LIT_BONUS);
     }
     const int hitsBefore{m_props.hits()};
     m_props.update(m_car, dt);

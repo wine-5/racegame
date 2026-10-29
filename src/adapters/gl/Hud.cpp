@@ -1,5 +1,7 @@
 #include "adapters/gl/Hud.hpp"
 
+#include "adapters/gl/MultiplierColor.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -152,6 +154,43 @@ void drawDrift(Renderer& renderer, const DriftScore& drift, const Car& car)
     }
 }
 
+// SCORE の下に、灯した街灯の数と、街灯 1 本ずつの色の並びを出す。全部灯したら大きく知らせる
+void drawLamps(Renderer& renderer, const domain::StreetLamps& lamps)
+{
+    constexpr float BANNER_SEC = 2.8f;
+    const auto& states{lamps.lamps()};
+    if (states.empty())
+    {
+        return;
+    }
+    char line[64];
+    std::snprintf(line, sizeof(line), "LAMPS %d/%d", lamps.litCount(), static_cast<int>(states.size()));
+    const float right{float(renderer.width()) - 24};
+    renderer.drawText(right - textWidth(line, 1.8f), 88, 1.8f, line, 0.85f, 0.9f, 1.0f, 1);
+
+    const float cell{7.0f};
+    const float gap{2.0f};
+    float x{right - float(states.size()) * (cell + gap) + gap};
+    for (const domain::StreetLamp& lamp : states)
+    {
+        domain::Vec3 color{lamp.lit ? multiplierColor(lamp.tier) : domain::Vec3{0.22f, 0.22f, 0.26f}};
+        float grow{lamp.lit ? 3.0f * std::exp(-lamp.litAge * 4.0f) : 0.0f};
+        renderer.addQuad(x - grow, 114 - grow, x + cell + grow, 114 + cell + grow, color.x, color.y, color.z, 1);
+        x += cell + gap;
+    }
+
+    if (lamps.sinceAllLit() < BANNER_SEC)
+    {
+        float t{lamps.sinceAllLit()};
+        float alpha{std::fmin(1.0f, (BANNER_SEC - t) * 2.0f)};
+        float pop{1.0f + 0.6f * std::exp(-t * 6.0f)};
+        float y{float(renderer.height()) * 0.3f};
+        drawCentered(renderer, y, 5.5f * pop, "PORT LIT UP", 1.0f, 0.82f, 0.3f, alpha);
+        std::snprintf(line, sizeof(line), "ALL LAMPS  +%d", static_cast<int>(domain::StreetLamps::ALL_LIT_BONUS));
+        drawCentered(renderer, y + 60 * pop, 2.6f, line, 1.0f, 0.95f, 0.75f, alpha);
+    }
+}
+
 }  // namespace
 
 void drawTitle(Renderer& renderer, const TitleScreen& title, float time)
@@ -271,6 +310,7 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
         hud.drawText(float(hud.width()) * 0.5f - 70, float(hud.height()) * 0.45f, 5.0f, "PAUSE", 1, 0.95f, 0.9f, 1);
     }
     drawDrift(renderer, session.drift(), session.car());
+    drawLamps(renderer, session.lamps());
     drawMinimap(renderer, session.track(), session.car());
     hud.flushHud();
 }

@@ -27,6 +27,8 @@ struct StreetLamp
 class StreetLamps
 {
 public:
+    static constexpr float ALL_LIT_BONUS = 20000.0f;  // 1 周で全部灯したときの点
+
     /**
      * @brief 街灯の位置を決める
      * @details 景色を作る側が、実際に街灯を立てた周回位置を渡す。
