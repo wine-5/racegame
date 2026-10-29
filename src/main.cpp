@@ -1,5 +1,6 @@
 #include "domain/car.hpp"
 #include "adapters/gl/render.hpp"
+#include "adapters/gl/track_mesh.hpp"
 #include "domain/track.hpp"
 
 #include <SDL.h>
@@ -627,7 +628,9 @@ int main(int argc, char** argv) {
         return 1;
     }
     openPad(app);
-    app.course = app.renderer.upload(app.track.visual);
+    CpuMesh course;
+    buildTrackMesh(app.track, course);
+    app.course = app.renderer.upload(course);
     CpuMesh body;
     CpuMesh wheel;
     CpuMesh shadow;

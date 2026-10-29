@@ -1,6 +1,6 @@
 #pragma once
 
-#include "domain/meshbuild.hpp"
+#include "domain/geom.hpp"
 
 #include <string>
 #include <vector>
@@ -45,7 +45,6 @@ struct Track {
     std::vector<TrackSample> samples;
     std::vector<std::string> names;
     std::vector<Vec3> pit;  // ピットレーンの中心線。走行には使わない
-    CpuMesh visual;
 
     bool load(const std::string& path);
     // preferS が 0 以上のときは、その周回位置に近い路面を優先する。立体交差で上下を取り違えない。
