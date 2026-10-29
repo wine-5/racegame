@@ -18,24 +18,24 @@ public:
     // コースを読んで、車をスタート位置に置く。
     bool start(ports::ITrackSource& source);
     void reset();
-    void togglePause() { paused_ = !paused_; }
-    bool paused() const { return paused_; }
+    void togglePause() { m_paused = !m_paused; }
+    bool paused() const { return m_paused; }
 
     // 1 フレームの経過時間を渡す。たまった時間の分だけ固定ステップで進める。
     void advance(double elapsedSec, const domain::DriveInput& input);
 
-    const domain::Track& track() const { return track_; }
-    const domain::Car& car() const { return car_; }
-    const domain::LapTimer& lap() const { return lap_; }
+    const domain::Track& track() const { return m_track; }
+    const domain::Car& car() const { return m_car; }
+    const domain::LapTimer& lap() const { return m_lap; }
 
 private:
     void step(const domain::DriveInput& input);
 
-    domain::Track track_;
-    domain::Car car_;
-    domain::LapTimer lap_;
-    bool paused_ = false;
-    double accumulator_ = 0;
+    domain::Track m_track;
+    domain::Car m_car;
+    domain::LapTimer m_lap;
+    bool m_paused = false;
+    double m_accumulator = 0;
 };
 
 }  // namespace application

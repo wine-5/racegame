@@ -28,7 +28,7 @@ public:
     InputFrame poll();
 
 private:
-    SDL_GameController* pad_ = nullptr;
+    SDL_GameController* m_pad = nullptr;
 };
 
 }  // namespace adapters::sdl

@@ -17,10 +17,10 @@ public:
     static std::string findDefaultPath();
 
     bool load(domain::Track& track) override;
-    const std::string& path() const { return path_; }
+    const std::string& path() const { return m_path; }
 
 private:
-    std::string path_;
+    std::string m_path;
 };
 
 }  // namespace adapters::file

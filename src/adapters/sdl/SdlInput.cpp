@@ -181,7 +181,7 @@ void SdlInput::open()
     // ブラウザのパッドは Gamepad API 側で読む。SDL で開くと入力が二重になる。
     return;
 #else
-    if (pad_)
+    if (m_pad)
     {
         return;
     }
@@ -189,10 +189,10 @@ void SdlInput::open()
     {
         if (SDL_IsGameController(i))
         {
-            pad_ = SDL_GameControllerOpen(i);
-            if (pad_)
+            m_pad = SDL_GameControllerOpen(i);
+            if (m_pad)
             {
-                SDL_Log("controller: %s", SDL_GameControllerName(pad_));
+                SDL_Log("controller: %s", SDL_GameControllerName(m_pad));
                 break;
             }
         }
@@ -202,10 +202,10 @@ void SdlInput::open()
 
 void SdlInput::close()
 {
-    if (pad_)
+    if (m_pad)
     {
-        SDL_GameControllerClose(pad_);
-        pad_ = nullptr;
+        SDL_GameControllerClose(m_pad);
+        m_pad = nullptr;
     }
 }
 
@@ -237,8 +237,8 @@ InputFrame SdlInput::poll()
         {
             open();
         }
-        else if (event.type == SDL_CONTROLLERDEVICEREMOVED && pad_ &&
-                 event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pad_)))
+        else if (event.type == SDL_CONTROLLERDEVICEREMOVED && m_pad &&
+                 event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(m_pad)))
         {
             close();
         }
@@ -253,7 +253,7 @@ InputFrame SdlInput::poll()
         }
     }
     PadPulse padPulse;
-    frame.drive = readDrive(pad_, padPulse);
+    frame.drive = readDrive(m_pad, padPulse);
     frame.reset = frame.reset || padPulse.reset;
     frame.pause = frame.pause || padPulse.pause;
     frame.camera = frame.camera || padPulse.camera;

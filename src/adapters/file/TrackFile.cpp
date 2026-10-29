@@ -11,7 +11,7 @@ using domain::Track;
 using domain::TrackSample;
 using domain::Vec3;
 
-TrackFile::TrackFile(std::string path) : path_(std::move(path))
+TrackFile::TrackFile(std::string path) : m_path(std::move(path))
 {
 }
 
@@ -35,7 +35,7 @@ std::string TrackFile::findDefaultPath()
 
 bool TrackFile::load(Track& track)
 {
-    std::ifstream in(path_);
+    std::ifstream in(m_path);
     if (!in)
     {
         return false;

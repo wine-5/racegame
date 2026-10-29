@@ -18,8 +18,8 @@ constexpr int kMaxStepsPerFrame = 8;
 
 bool GameSession::start(ITrackSource& source)
 {
-    track_ = Track{};
-    if (!source.load(track_))
+    m_track = Track{};
+    if (!source.load(m_track))
     {
         return false;
     }
@@ -29,8 +29,8 @@ bool GameSession::start(ITrackSource& source)
 
 void GameSession::reset()
 {
-    car_.reset(track_);
-    lap_ = LapTimer{};
+    m_car.reset(m_track);
+    m_lap = LapTimer{};
 }
 
 void GameSession::advance(double elapsedSec, const DriveInput& input)
@@ -40,25 +40,25 @@ void GameSession::advance(double elapsedSec, const DriveInput& input)
     if (elapsedSec < 0)
         elapsedSec = 0;
 
-    if (paused_)
+    if (m_paused)
     {
-        accumulator_ = 0;
+        m_accumulator = 0;
         return;
     }
-    accumulator_ += elapsedSec;
+    m_accumulator += elapsedSec;
     int guard = 0;
-    while (accumulator_ >= kFixedStepSec && guard < kMaxStepsPerFrame)
+    while (m_accumulator >= kFixedStepSec && guard < kMaxStepsPerFrame)
     {
         step(input);
-        accumulator_ -= kFixedStepSec;
+        m_accumulator -= kFixedStepSec;
         ++guard;
     }
 }
 
 void GameSession::step(const DriveInput& input)
 {
-    car_.update(float(kFixedStepSec), input, track_);
-    lap_.tick(car_.ground.s, track_.length, float(kFixedStepSec));
+    m_car.update(float(kFixedStepSec), input, m_track);
+    m_lap.tick(m_car.ground.s, m_track.length, float(kFixedStepSec));
 }
 
 }  // namespace application
