@@ -2,6 +2,7 @@
 
 #include "adapters/gl/ChaseCamera.hpp"
 #include "adapters/gl/Hud.hpp"
+#include "adapters/gl/LightTrail.hpp"
 #include "adapters/gl/PostProcess.hpp"
 #include "adapters/gl/Renderer.hpp"
 #include "adapters/gl/Scenery.hpp"
@@ -56,6 +57,7 @@ public:
         m_smoke.clear();
         m_skidMarks.clear();
         m_sparks.clear();
+        m_trail.clear();
         m_skidMarksDirty = true;
     }
 
@@ -103,6 +105,7 @@ private:
     ChaseCamera m_camera;
     TireSmoke m_smoke;
     Sparks m_sparks;
+    LightTrail m_trail;
     std::vector<Billboard> m_glows;  // 光る板（火花・光の尾）
     SkidMarks m_skidMarks;
     CpuMesh m_skidMesh;

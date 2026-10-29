@@ -93,6 +93,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_camera.update(session.car(), session.track(), dt);
     m_smoke.update(session.car(), dt, !session.paused());
     m_sparks.update(session.car(), session.drift(), dt, !session.paused());
+    m_trail.update(session.car(), dt, !session.paused());
     if (m_skidMarks.update(session.car(), !session.paused()) || m_skidMarksDirty)
     {
         m_skidMarks.build(m_skidMesh);
@@ -125,6 +126,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
     m_glows.clear();
     m_sparks.collect(m_glows);
+    m_trail.collect(m_glows);
     m_renderer.drawBillboards(m_glows, cameraRight, cameraUp, true);
     m_post.finish(feel(session, dt));
 

@@ -52,6 +52,7 @@ add_executable(racegame
     src/adapters/gl/ChaseCamera.cpp
     src/adapters/gl/GameView.cpp
     src/adapters/gl/Hud.cpp
+    src/adapters/gl/LightTrail.cpp
     src/adapters/gl/PortScenery.cpp
     src/adapters/gl/PostProcess.cpp
     src/adapters/gl/Renderer.cpp
