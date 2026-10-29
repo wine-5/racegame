@@ -69,6 +69,12 @@ void GameView::render(const application::GameSession& session, float dt, int wid
 {
     m_camera.update(session.car(), session.track(), dt);
     m_smoke.update(session.car(), dt, !session.paused());
+    if (m_skidMarks.update(session.car(), !session.paused()) || m_skidMarksDirty)
+    {
+        m_skidMarks.build(m_skidMesh);
+        m_renderer.update(m_skidGpu, m_skidMesh);
+        m_skidMarksDirty = false;
+    }
 
     m_renderer.resize(width, height);
     m_renderer.clearFrame();
@@ -81,6 +87,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
 
     Mat4 identity;
     m_renderer.draw(m_course, identity);
+    m_renderer.drawDecal(m_skidGpu);
     drawCar(session.car(), session.track());
 
     // 半透明のものは不透明なものをすべて描いてから
