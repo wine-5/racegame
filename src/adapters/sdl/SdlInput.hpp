@@ -12,7 +12,8 @@ namespace adapters::sdl
 struct InputFrame
 {
     bool drift{};  // ドリフトのボタンを押しているか
-    bool quit{};
+    bool quit{};   // ウィンドウを閉じた
+    bool back{};   // ESC。遊んでいるときはタイトルへ戻る
     bool reset{};
     bool pause{};
     bool camera{};

@@ -37,6 +37,7 @@ struct CaptureOptions
     int frame{180};    // このフレームを描いたら保存して終わる
     bool autoDrive{};  // 途中からドリフトのボタンを押し続ける
     bool autopilot{};  // ボタンを押さずに自動運転で走る。コースの奥の景色を確かめるのに使う
+    bool title{};  // タイトル画面を保存する
 };
 
 /**
@@ -78,7 +79,12 @@ public:
      * @details 保存するときは、経過時間を 1/60 秒に固定して毎回同じ絵になるようにする。
      * @param options 保存の設定
      */
-    void setCapture(const CaptureOptions& options) { m_capture = options; }
+    void setCapture(const CaptureOptions& options)
+    {
+        m_capture = options;
+        // 画面を保存するときは、タイトルを飛ばしてすぐ遊ぶ画面にする（--title のときだけタイトル）
+        m_screen = options.path.empty() || options.title ? Screen::Title : Screen::Playing;
+    }
 
 private:
     /// emscripten_set_main_loop_arg に渡すための入口
@@ -95,6 +101,12 @@ private:
 
     /// ステージを読み込み、車をスタート位置に置く
     bool loadStage(int index);
+
+    /// タイトル画面へ戻る。後ろではデモの走りを見せる
+    void showTitle();
+
+    /// 選んでいるステージを最初から遊び始める
+    void startGame();
 
     /// ブラウザでは、キャンバスの画素数をページの大きさに合わせる
     void fitCanvas();
@@ -117,6 +129,15 @@ private:
     bool m_audioOk{};
     bool m_running{true};
     Uint64 m_prevCounter{};
+    /// 今出している画面
+    enum class Screen
+    {
+        Title,
+        Playing
+    };
+
+    Screen m_screen = Screen::Title;
+    bool m_driftWasHeld{};
     CaptureOptions m_capture;
     int m_frameCount{};
 };

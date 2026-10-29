@@ -139,7 +139,7 @@ InputFrame SdlInput::poll()
         {
             SDL_Scancode code{event.key.keysym.scancode};
             if (code == SDL_SCANCODE_ESCAPE)
-                frame.quit = true;
+                frame.back = true;
             else if (code == SDL_SCANCODE_R)
                 frame.reset = true;
             else if (code == SDL_SCANCODE_C)

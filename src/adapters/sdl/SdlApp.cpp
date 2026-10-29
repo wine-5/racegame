@@ -169,6 +169,22 @@ void SdlApp::run()
 #endif
 }
 
+void SdlApp::showTitle()
+{
+    m_screen = Screen::Title;
+    if (m_session.paused())
+    {
+        m_session.togglePause();
+    }
+    loadStage(m_stageIndex);
+}
+
+void SdlApp::startGame()
+{
+    m_screen = Screen::Playing;
+    loadStage(m_stageIndex);
+}
+
 void SdlApp::fitCanvas()
 {
 #ifdef __EMSCRIPTEN__
@@ -210,7 +226,29 @@ void SdlApp::frame()
     {
         m_running = false;
     }
-    if (input.pause)
+    const bool playing{m_screen == Screen::Playing};
+    if (input.back)
+    {
+        if (playing)
+        {
+            showTitle();
+        }
+        else
+        {
+#ifndef __EMSCRIPTEN__
+            // タイトルで ESC を押すと終わる。ブラウザではタブを閉じればよいので何もしない
+            m_running = false;
+#endif
+        }
+    }
+    // タイトルでボタンを押した瞬間に、選んだステージを最初から始める
+    bool pressed{input.drift && !m_driftWasHeld};
+    m_driftWasHeld = input.drift;
+    if (!playing && pressed)
+    {
+        startGame();
+    }
+    if (playing && input.pause)
     {
         m_session.togglePause();
     }
@@ -230,7 +268,7 @@ void SdlApp::frame()
     {
         loadStage(input.stage);
     }
-    if (input.reset)
+    if (playing && input.reset)
     {
         m_session.reset();
         m_view.snapCamera();
@@ -256,7 +294,8 @@ void SdlApp::frame()
         elapsed = 0;
     }
 
-    m_session.advance(elapsed, input.drift);
+    // タイトルの後ろでは、デモとしてずっとドリフトさせて見せる
+    m_session.advance(elapsed, m_screen == Screen::Playing ? input.drift : true);
     m_driftSound.update(m_session.car(), m_session.drift(), m_session.lastInput().throttle, float(elapsed),
                         m_session.paused());
 
@@ -264,7 +303,20 @@ void SdlApp::frame()
     int drawableW{};
     int drawableH{};
     SDL_GL_GetDrawableSize(m_window, &drawableW, &drawableH);
-    m_view.render(m_session, float(elapsed), drawableW, drawableH);
+    if (m_screen == Screen::Title)
+    {
+        gl::TitleScreen title;
+        for (const Stage& stage : m_stages)
+        {
+            title.stages.push_back(stage.name);
+        }
+        title.selected = m_stageIndex;
+        m_view.render(m_session, float(elapsed), drawableW, drawableH, &title);
+    }
+    else
+    {
+        m_view.render(m_session, float(elapsed), drawableW, drawableH);
+    }
     if (capturing && m_frameCount >= m_capture.frame)
     {
         saveCapture();

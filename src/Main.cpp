@@ -75,6 +75,10 @@ int main(int argc, char** argv)
         {
             capture.autopilot = true;
         }
+        else if (std::strcmp(argv[i], "--title") == 0)
+        {
+            capture.title = true;
+        }
     }
     app.setCapture(capture);
     if (!app.init())
