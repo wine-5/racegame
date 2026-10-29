@@ -80,6 +80,7 @@ struct Frame
     float s{};
     bool quayside{};
     bool alley{};
+    bool plaza{};  // クレーン広場のヘアピン
 };
 
 std::vector<Frame> makeFrames(const Track& track)
@@ -101,6 +102,7 @@ std::vector<Frame> makeFrames(const Track& track)
         std::string name{track.nameOf(sample.nameId)};
         frame.quayside = name == "QUAYSIDE";
         frame.alley = name == "CONTAINER ALLEY";
+        frame.plaza = name == "CRANE HAIRPIN";
         frames.push_back(frame);
     }
     return frames;
@@ -185,7 +187,8 @@ void addContainerWall(CpuMesh& mesh, const std::vector<Frame>& frames, float sid
         Vec3 wall0{side(frame, sideSign * frame.wall, 0)};
         Vec3 wall1{side(next, sideSign * next.wall, 0)};
         float step{length(wall1 - wall0)};
-        if (frame.quayside && sideSign < 0)
+        // 海沿いの左と、広場の内側（照明塔が見えるように）は低い柵にする
+        if ((frame.quayside && sideSign < 0) || (frame.plaza && sideSign > 0))
         {
             carry = 0;
             continue;
@@ -229,30 +232,34 @@ void addContainerWall(CpuMesh& mesh, const std::vector<Frame>& frames, float sid
     }
 }
 
-/// 海側の低い防護柵（黄と黒の縞）
-void addSeaBarrier(CpuMesh& mesh, const std::vector<Frame>& frames)
+/// 低い防護柵（黄と黒の縞）。sideSign は -1 が左、1 が右。seaDrop なら外側を海へ落ちる岸壁にする
+template <class Where>
+void addBarrier(CpuMesh& mesh, const std::vector<Frame>& frames, float sideSign, Where where, bool seaDrop)
 {
     const std::size_t n{frames.size()};
     for (std::size_t i{}; i < n; ++i)
     {
         const Frame& a{frames[i]};
         const Frame& b{frames[(i + 1) % n]};
-        if (!a.quayside || !b.quayside)
+        if (!where(a) || !where(b))
         {
             continue;
         }
-        Vec3 a0{side(a, -a.wall, 0)};
-        Vec3 b0{side(b, -b.wall, 0)};
-        Vec3 a1{side(a, -a.wall - 0.5f, 0)};
-        Vec3 b1{side(b, -b.wall - 0.5f, 0)};
+        Vec3 a0{side(a, sideSign * a.wall, 0)};
+        Vec3 b0{side(b, sideSign * b.wall, 0)};
+        Vec3 a1{side(a, sideSign * (a.wall + 0.5f), 0)};
+        Vec3 b1{side(b, sideSign * (b.wall + 0.5f), 0)};
         Vec3 h{0, 0.9f, 0};
         bool stripe{static_cast<int>(a.s / 2.0f) % 2 == 0};
         Vec3 color{stripe ? LINE_YELLOW : HAZARD_BLACK};
-        mesh.addQuad(a0, b0, b0 + h, a0 + h, a.right, color);
+        mesh.addQuad(a0, b0, b0 + h, a0 + h, a.right * -sideSign, color);
         mesh.addQuad(a0 + h, b0 + h, b1 + h, a1 + h, UP, CONCRETE);
-        // 岸壁の切り立った面（海へ落ちる）
-        Vec3 drop{0, -2.5f, 0};
-        mesh.addQuad(a1, b1, b1 + drop, a1 + drop, a.right * -1.0f, CONCRETE * 0.7f);
+        if (seaDrop)
+        {
+            // 岸壁の切り立った面（海へ落ちる）
+            Vec3 drop{0, -2.5f, 0};
+            mesh.addQuad(a1, b1, b1 + drop, a1 + drop, a.right * sideSign, CONCRETE * 0.7f);
+        }
     }
 }
 
@@ -280,7 +287,7 @@ void addFloodTower(CpuMesh& mesh, Vec3 base, float height, std::vector<PointLigh
                    Vec3{0, 0, 0.5f}, steel);
     addOrientedBox(mesh, base + Vec3{0, height, 0}, Vec3{2.2f, 0, 0}, Vec3{0, 0.6f, 0}, Vec3{0, 0, 2.2f},
                    glow(Vec3{1.0f, 0.95f, 0.85f}));
-    lamps.push_back({base + Vec3{0, height - 2.0f, 0}, Vec3{1.0f, 0.92f, 0.8f} * 1.3f, 75.0f});
+    lamps.push_back({base + Vec3{0, height - 2.0f, 0}, Vec3{1.0f, 0.92f, 0.8f} * 3.0f, 160.0f});
 }
 
 /// 岸壁のガントリークレーン。道をまたいで立ち、海へ腕を突き出す。てっぺんに赤い航空障害灯
@@ -498,7 +505,7 @@ void buildPortScenery(const Track& track, CpuMesh& mesh, std::vector<PointLight>
     addContainerWall(mesh, frames, -1.0f, random, lamps);
     if (hasSea)
     {
-        addSeaBarrier(mesh, frames);
+        addBarrier(mesh, frames, -1.0f, [](const Frame& f) { return f.quayside; }, true);
         // 海沿いの直線に、道をまたぐクレーンを並べる
         float nextCrane{50.0f};
         for (const Frame& frame : frames)
@@ -556,10 +563,11 @@ void buildPortScenery(const Track& track, CpuMesh& mesh, std::vector<PointLight>
     }
     if (hairpinFirst < hairpinLast)
     {
-        // ヘアピンの円の中心に照明塔を立てて、広場全体を照らす
+        // ヘアピンの円の中心に照明塔を立てて、広場全体を照らす。内側は低い柵なので塔がよく見える
+        addBarrier(mesh, frames, 1.0f, [](const Frame& f) { return f.plaza; }, false);
         Vec3 center{(frames[hairpinFirst].position + frames[hairpinLast].position) * 0.5f};
         center.y = 0;
-        addFloodTower(mesh, center, 26.0f, lamps);
+        addFloodTower(mesh, center, 30.0f, lamps);
     }
     else if (frames.size() > 10)
     {
