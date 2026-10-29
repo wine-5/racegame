@@ -35,6 +35,7 @@ add_library(racecore STATIC
     src/domain/CourseBuilder.cpp
     src/domain/DriftScore.cpp
     src/domain/LapTimer.cpp
+    src/domain/StreetLamps.cpp
     src/application/GameSession.cpp
     src/application/ManualDriver.cpp
     src/application/OneButtonDriver.cpp
