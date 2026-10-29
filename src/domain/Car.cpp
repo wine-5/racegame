@@ -184,10 +184,14 @@ void Car::stepTire(float dt, const DriveInput& input)
         {
             // 右へ曲がるドリフトでは進む向きが車体の左になるので slip は負
             float direction{slip < 0 ? -1.0f : 1.0f};
-            float steerInto{-direction * input.steer};
-            float hold{clampf(input.throttle / DRIFT_THROTTLE_HOLD, 0.0f, 1.0f)};
-            float angle{clampf(DRIFT_BASE_ANGLE + DRIFT_STEER_ANGLE * steerInto, DRIFT_MIN_ANGLE, DRIFT_MAX_ANGLE)};
-            float target{direction * (DRIFT_MIN_ANGLE + (angle - DRIFT_MIN_ANGLE) * hold)};
+            float target{direction * input.driftAngle};
+            if (input.driftAngle < 0.0f)
+            {
+                float steerInto{-direction * input.steer};
+                float hold{clampf(input.throttle / DRIFT_THROTTLE_HOLD, 0.0f, 1.0f)};
+                float angle{clampf(DRIFT_BASE_ANGLE + DRIFT_STEER_ANGLE * steerInto, DRIFT_MIN_ANGLE, DRIFT_MAX_ANGLE)};
+                target = direction * (DRIFT_MIN_ANGLE + (angle - DRIFT_MIN_ANGLE) * hold);
+            }
             yawAccel += drifting * (DRIFT_ASSIST_P * (slip - target) + DRIFT_ASSIST_D * slipRate);
         }
 

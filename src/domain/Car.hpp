@@ -14,6 +14,8 @@ struct DriveInput
     float brake{};     // 0..1  停止中は後退
     float steer{};     // -1..1  左が負、右が正
     bool handbrake{};  // 後輪だけをロックする。ドリフトのきっかけに使う
+    // ドリフト中に保つ角度（ラジアン）。負なら、ステアとアクセルから角度を決める
+    float driftAngle{-1.0f};
 };
 
 /**
