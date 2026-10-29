@@ -1,19 +1,14 @@
 #include "adapters/gl/Renderer.hpp"
 
+#include "adapters/gl/GlApi.hpp"
+#include "adapters/gl/Shader.hpp"
+
 #include <SDL.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-
-#ifdef __EMSCRIPTEN__
-#include <GLES3/gl3.h>
-#else
-#define GL_GLEXT_PROTOTYPES 1
-#include <GL/gl.h>
-#include <GL/glext.h>
-#endif
 
 namespace adapters::gl
 {
@@ -26,13 +21,6 @@ using domain::Vec3;
 
 namespace
 {
-
-const char* VERSION =
-#ifdef __EMSCRIPTEN__
-    "#version 300 es\nprecision highp float;\n";
-#else
-    "#version 330 core\n";
-#endif
 
 const char* WORLD_VS = R"GLSL(
 layout(location = 0) in vec3 aPos;
@@ -203,50 +191,6 @@ const std::uint8_t FONT[][7] = {
 };
 static_assert(sizeof(FONT) / sizeof(FONT[0]) == sizeof(GLYPH_ORDER) - 1, "glyph count");
 
-GLuint compileShader(GLenum type, const char* source)
-{
-    const char* parts[]{VERSION, source};
-    GLuint shader{glCreateShader(type)};
-    glShaderSource(shader, 2, parts, nullptr);
-    glCompileShader(shader);
-    GLint ok{0};
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-    if (!ok)
-    {
-        char log[1024];
-        glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
-        SDL_Log("shader compile failed: %s", log);
-        return 0;
-    }
-    return shader;
-}
-
-GLuint linkProgram(const char* vs, const char* fs)
-{
-    GLuint vertex{compileShader(GL_VERTEX_SHADER, vs)};
-    GLuint fragment{compileShader(GL_FRAGMENT_SHADER, fs)};
-    if (!vertex || !fragment)
-    {
-        return 0;
-    }
-    GLuint program{glCreateProgram()};
-    glAttachShader(program, vertex);
-    glAttachShader(program, fragment);
-    glLinkProgram(program);
-    glDeleteShader(vertex);
-    glDeleteShader(fragment);
-    GLint ok{0};
-    glGetProgramiv(program, GL_LINK_STATUS, &ok);
-    if (!ok)
-    {
-        char log[1024];
-        glGetProgramInfoLog(program, sizeof(log), nullptr, log);
-        SDL_Log("shader link failed: %s", log);
-        return 0;
-    }
-    return program;
-}
-
 int glyphIndex(char c)
 {
     if (c >= 'a' && c <= 'z')
@@ -266,10 +210,10 @@ int glyphIndex(char c)
 bool Renderer::init()
 {
     glGenVertexArrays(1, &m_dummyVao);
-    m_worldProgram = linkProgram(WORLD_VS, WORLD_FS);
-    m_skyProgram = linkProgram(SKY_VS, SKY_FS);
-    m_hudProgram = linkProgram(HUD_VS, HUD_FS);
-    m_particleProgram = linkProgram(PARTICLE_VS, PARTICLE_FS);
+    m_worldProgram = buildProgram(WORLD_VS, WORLD_FS);
+    m_skyProgram = buildProgram(SKY_VS, SKY_FS);
+    m_hudProgram = buildProgram(HUD_VS, HUD_FS);
+    m_particleProgram = buildProgram(PARTICLE_VS, PARTICLE_FS);
     if (!m_worldProgram || !m_skyProgram || !m_hudProgram || !m_particleProgram)
     {
         return false;
