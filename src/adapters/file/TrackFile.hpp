@@ -5,7 +5,8 @@
 #include <string>
 
 // assets/track/*.txt のテキスト形式からコースを読む。
-class TrackFile : public TrackSource {
+class TrackFile : public TrackSource
+{
 public:
     explicit TrackFile(std::string path);
 

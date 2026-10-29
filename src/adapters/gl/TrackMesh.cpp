@@ -3,16 +3,19 @@
 #include <algorithm>
 #include <cmath>
 
-namespace {
+namespace
+{
 
-Vec3 horizontalRight(const Track& track, int index) {
+Vec3 horizontalRight(const Track& track, int index)
+{
     const int n = static_cast<int>(track.samples.size());
     const TrackSample& prev = track.samples[(index + n - 1) % n];
     const TrackSample& next = track.samples[(index + 1) % n];
     float tx = next.x - prev.x;
     float tz = next.z - prev.z;
     float len = std::sqrt(tx * tx + tz * tz);
-    if (len < 1e-4f) {
+    if (len < 1e-4f)
+    {
         return {1, 0, 0};
     }
     tx /= len;
@@ -20,7 +23,8 @@ Vec3 horizontalRight(const Track& track, int index) {
     return {tz, 0, -tx};
 }
 
-Vec3 roadNormal(const Track& track, int index) {
+Vec3 roadNormal(const Track& track, int index)
+{
     const int n = static_cast<int>(track.samples.size());
     const TrackSample& prev = track.samples[(index + n - 1) % n];
     const TrackSample& next = track.samples[(index + 1) % n];
@@ -29,13 +33,15 @@ Vec3 roadNormal(const Track& track, int index) {
     right.y = track.samples[index].cross;
     right = normalize(right);
     Vec3 normal = normalize(cross(tangent, right));
-    if (normal.y < 0) {
+    if (normal.y < 0)
+    {
         normal = normal * -1.0f;
     }
     return normal;
 }
 
-Vec3 onRoad(const Track& track, int index, float lateral) {
+Vec3 onRoad(const Track& track, int index, float lateral)
+{
     const TrackSample& sample = track.samples[index];
     Vec3 right = horizontalRight(track, index);
     return {
@@ -45,15 +51,18 @@ Vec3 onRoad(const Track& track, int index, float lateral) {
     };
 }
 
-void addRibbon(CpuMesh& mesh, const Track& track, float lat0, float lat1, Vec3 color, bool flatOuter) {
+void addRibbon(CpuMesh& mesh, const Track& track, float lat0, float lat1, Vec3 color, bool flatOuter)
+{
     const int n = static_cast<int>(track.samples.size());
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < n; ++i)
+    {
         int j = (i + 1) % n;
         Vec3 a = onRoad(track, i, lat0);
         Vec3 b = onRoad(track, i, lat1);
         Vec3 c = onRoad(track, j, lat1);
         Vec3 d = onRoad(track, j, lat0);
-        if (flatOuter) {
+        if (flatOuter)
+        {
             // 芝は縁石の外側の高さで水平にする。
             float edge = (std::fabs(lat0) > std::fabs(lat1) ? lat1 : lat0);
             float sign = edge >= 0 ? 1.0f : -1.0f;
@@ -67,7 +76,8 @@ void addRibbon(CpuMesh& mesh, const Track& track, float lat0, float lat1, Vec3 c
         }
         Vec3 normal = normalize(roadNormal(track, i) + roadNormal(track, j));
         Vec3 tint = color;
-        if (!flatOuter) {
+        if (!flatOuter)
+        {
             float shade = 0.94f + 0.08f * float((i * 13) % 5) / 5.0f;
             tint = color * shade;
         }
@@ -75,15 +85,18 @@ void addRibbon(CpuMesh& mesh, const Track& track, float lat0, float lat1, Vec3 c
     }
 }
 
-void addWalls(CpuMesh& mesh, const Track& track) {
+void addWalls(CpuMesh& mesh, const Track& track)
+{
     const int n = static_cast<int>(track.samples.size());
     const float inner = track.wallLateral();
     const float outer = inner + 0.4f;
     const float height = 0.9f;
     const Vec3 concrete{0.62f, 0.63f, 0.66f};
-    for (int side = -1; side <= 1; side += 2) {
+    for (int side = -1; side <= 1; side += 2)
+    {
         float sign = float(side);
-        for (int i = 0; i < n; ++i) {
+        for (int i = 0; i < n; ++i)
+        {
             int j = (i + 1) % n;
             Vec3 a = onRoad(track, i, sign * inner);
             Vec3 b = onRoad(track, j, sign * inner);
@@ -107,15 +120,18 @@ void addWalls(CpuMesh& mesh, const Track& track) {
     }
 }
 
-void addCurbs(CpuMesh& mesh, const Track& track) {
+void addCurbs(CpuMesh& mesh, const Track& track)
+{
     const int n = static_cast<int>(track.samples.size());
     const Vec3 red{0.75f, 0.09f, 0.08f};
     const Vec3 white{0.90f, 0.90f, 0.92f};
-    for (int side = -1; side <= 1; side += 2) {
+    for (int side = -1; side <= 1; side += 2)
+    {
         float sign = float(side);
         float inner = sign * track.halfWidth;
         float outer = sign * (track.halfWidth + track.curbWidth);
-        for (int i = 0; i < n; ++i) {
+        for (int i = 0; i < n; ++i)
+        {
             int j = (i + 1) % n;
             bool paint = (static_cast<int>(track.samples[i].s / 3.0f) % 2) == 0;
             Vec3 color = paint ? red : white;
@@ -129,8 +145,10 @@ void addCurbs(CpuMesh& mesh, const Track& track) {
     }
 }
 
-void addStartLine(CpuMesh& mesh, const Track& track) {
-    if (track.samples.size() < 2) {
+void addStartLine(CpuMesh& mesh, const Track& track)
+{
+    if (track.samples.size() < 2)
+    {
         return;
     }
     Vec3 right = horizontalRight(track, 0);
@@ -141,7 +159,8 @@ void addStartLine(CpuMesh& mesh, const Track& track) {
     float tx = b.x - a.x;
     float tz = b.z - a.z;
     float len = std::sqrt(tx * tx + tz * tz);
-    if (len > 1e-4f) {
+    if (len > 1e-4f)
+    {
         tx /= len;
         tz /= len;
         yaw = std::atan2(tx, tz);
@@ -150,7 +169,8 @@ void addStartLine(CpuMesh& mesh, const Track& track) {
     Vec3 center{a.x, a.y, a.z};
     const int cells = 8;
     const float depth = 0.8f;
-    for (int i = 0; i < cells; ++i) {
+    for (int i = 0; i < cells; ++i)
+    {
         float lat0 = -track.halfWidth + track.halfWidth * 2.0f * (float(i) / cells);
         float lat1 = -track.halfWidth + track.halfWidth * 2.0f * (float(i + 1) / cells);
         Vec3 color = (i % 2 == 0) ? Vec3{0.92f, 0.92f, 0.94f} : Vec3{0.05f, 0.05f, 0.06f};
@@ -168,16 +188,19 @@ void addStartLine(CpuMesh& mesh, const Track& track) {
     // スタートの門。位置が分かるようにする。
     const float pillar = track.halfWidth + 1.1f;
     const Vec3 steel{0.22f, 0.24f, 0.28f};
-    for (int side = -1; side <= 1; side += 2) {
+    for (int side = -1; side <= 1; side += 2)
+    {
         Vec3 base = center + right * (float(side) * pillar);
         base.y = a.y;
         Vec3 axisX = right * 0.28f;
         Vec3 axisZ = forward * 0.28f;
         Vec3 y0 = base;
         Vec3 y1 = base + Vec3{0, 6.4f, 0};
-        mesh.addQuad(y0 - axisX - axisZ, y0 + axisX - axisZ, y1 + axisX - axisZ, y1 - axisX - axisZ, forward * -1.0f, steel);
+        mesh.addQuad(y0 - axisX - axisZ, y0 + axisX - axisZ, y1 + axisX - axisZ, y1 - axisX - axisZ, forward * -1.0f,
+                     steel);
         mesh.addQuad(y0 - axisX + axisZ, y1 - axisX + axisZ, y1 + axisX + axisZ, y0 + axisX + axisZ, forward, steel);
-        mesh.addQuad(y0 - axisX - axisZ, y1 - axisX - axisZ, y1 - axisX + axisZ, y0 - axisX + axisZ, right * -1.0f, steel);
+        mesh.addQuad(y0 - axisX - axisZ, y1 - axisX - axisZ, y1 - axisX + axisZ, y0 - axisX + axisZ, right * -1.0f,
+                     steel);
         mesh.addQuad(y0 + axisX - axisZ, y0 + axisX + axisZ, y1 + axisX + axisZ, y1 + axisX - axisZ, right, steel);
     }
     Vec3 left = center + right * -pillar + Vec3{0, 6.2f, 0};
@@ -185,19 +208,23 @@ void addStartLine(CpuMesh& mesh, const Track& track) {
     mesh.addQuad(left, rightTop, rightTop + Vec3{0, 0.4f, 0}, left + Vec3{0, 0.4f, 0}, forward, steel);
 }
 
-void addPit(CpuMesh& mesh, const std::vector<Vec3>& pit) {
-    if (pit.size() < 2) {
+void addPit(CpuMesh& mesh, const std::vector<Vec3>& pit)
+{
+    if (pit.size() < 2)
+    {
         return;
     }
     const float half = 4.0f;
     const Vec3 color{0.24f, 0.24f, 0.26f};
-    for (size_t i = 0; i + 1 < pit.size(); ++i) {
+    for (size_t i = 0; i + 1 < pit.size(); ++i)
+    {
         Vec3 a = pit[i];
         Vec3 b = pit[i + 1];
         float tx = b.x - a.x;
         float tz = b.z - a.z;
         float len = std::sqrt(tx * tx + tz * tz);
-        if (len < 0.05f) {
+        if (len < 0.05f)
+        {
             continue;
         }
         tx /= len;
@@ -215,13 +242,15 @@ void addPit(CpuMesh& mesh, const std::vector<Vec3>& pit) {
     }
 }
 
-void addGround(CpuMesh& mesh, const Track& track) {
+void addGround(CpuMesh& mesh, const Track& track)
+{
     float minX = track.samples[0].x;
     float maxX = minX;
     float minZ = track.samples[0].z;
     float maxZ = minZ;
     float minY = track.samples[0].y;
-    for (const TrackSample& sample : track.samples) {
+    for (const TrackSample& sample : track.samples)
+    {
         minX = std::min(minX, sample.x);
         maxX = std::max(maxX, sample.x);
         minZ = std::min(minZ, sample.z);
@@ -240,7 +269,8 @@ void addGround(CpuMesh& mesh, const Track& track) {
 
 }  // namespace
 
-void buildTrackMesh(const Track& track, CpuMesh& mesh) {
+void buildTrackMesh(const Track& track, CpuMesh& mesh)
+{
     mesh = CpuMesh{};
     addGround(mesh, track);
     const float curbOuter = track.halfWidth + track.curbWidth;

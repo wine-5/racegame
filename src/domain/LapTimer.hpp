@@ -1,7 +1,8 @@
 #pragma once
 
 // 周回の計測。スタートラインを越えたら次の周に入る。最初の周はアウトラップで計らない。
-struct LapTimer {
+struct LapTimer
+{
     int completed = 0;
     bool timing = false;
     float lap = 0;

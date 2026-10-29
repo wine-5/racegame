@@ -1,7 +1,7 @@
 #pragma once
 
-#include "domain/Car.hpp"
 #include "adapters/gl/CpuMesh.hpp"
+#include "domain/Car.hpp"
 
 // 車の見た目。物理には関係しない。
 void buildCarBody(CpuMesh& mesh);

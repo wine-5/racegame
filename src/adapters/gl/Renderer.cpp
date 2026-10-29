@@ -14,7 +14,8 @@
 #include <GL/glext.h>
 #endif
 
-namespace {
+namespace
+{
 
 const char* kVersion =
 #ifdef __EMSCRIPTEN__
@@ -126,14 +127,16 @@ const std::uint8_t kFont[][7] = {
 };
 static_assert(sizeof(kFont) / sizeof(kFont[0]) == sizeof(kGlyphOrder) - 1, "glyph count");
 
-GLuint compileShader(GLenum type, const char* source) {
+GLuint compileShader(GLenum type, const char* source)
+{
     const char* parts[] = {kVersion, source};
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 2, parts, nullptr);
     glCompileShader(shader);
     GLint ok = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-    if (!ok) {
+    if (!ok)
+    {
         char log[1024];
         glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
         SDL_Log("shader compile failed: %s", log);
@@ -142,10 +145,12 @@ GLuint compileShader(GLenum type, const char* source) {
     return shader;
 }
 
-GLuint linkProgram(const char* vs, const char* fs) {
+GLuint linkProgram(const char* vs, const char* fs)
+{
     GLuint vertex = compileShader(GL_VERTEX_SHADER, vs);
     GLuint fragment = compileShader(GL_FRAGMENT_SHADER, fs);
-    if (!vertex || !fragment) {
+    if (!vertex || !fragment)
+    {
         return 0;
     }
     GLuint program = glCreateProgram();
@@ -156,7 +161,8 @@ GLuint linkProgram(const char* vs, const char* fs) {
     glDeleteShader(fragment);
     GLint ok = 0;
     glGetProgramiv(program, GL_LINK_STATUS, &ok);
-    if (!ok) {
+    if (!ok)
+    {
         char log[1024];
         glGetProgramInfoLog(program, sizeof(log), nullptr, log);
         SDL_Log("shader link failed: %s", log);
@@ -165,12 +171,15 @@ GLuint linkProgram(const char* vs, const char* fs) {
     return program;
 }
 
-int glyphIndex(char c) {
-    if (c >= 'a' && c <= 'z') {
+int glyphIndex(char c)
+{
+    if (c >= 'a' && c <= 'z')
+    {
         c = static_cast<char>(c - 'a' + 'A');
     }
     const char* found = std::strchr(kGlyphOrder, c);
-    if (!found) {
+    if (!found)
+    {
         return -1;
     }
     return static_cast<int>(found - kGlyphOrder);
@@ -178,12 +187,14 @@ int glyphIndex(char c) {
 
 }  // namespace
 
-bool Renderer::init() {
+bool Renderer::init()
+{
     glGenVertexArrays(1, &dummyVao);
     worldProgram = linkProgram(kWorldVs, kWorldFs);
     skyProgram = linkProgram(kSkyVs, kSkyFs);
     hudProgram = linkProgram(kHudVs, kHudFs);
-    if (!worldProgram || !skyProgram || !hudProgram) {
+    if (!worldProgram || !skyProgram || !hudProgram)
+    {
         return false;
     }
     uViewProj = glGetUniformLocation(worldProgram, "uViewProj");
@@ -211,18 +222,21 @@ bool Renderer::init() {
     return true;
 }
 
-void Renderer::clearFrame() {
+void Renderer::clearFrame()
+{
     glClearColor(0.62f, 0.74f, 0.84f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void Renderer::resize(int newWidth, int newHeight) {
+void Renderer::resize(int newWidth, int newHeight)
+{
     width = newWidth > 0 ? newWidth : 1;
     height = newHeight > 0 ? newHeight : 1;
     glViewport(0, 0, width, height);
 }
 
-void Renderer::drawSky() {
+void Renderer::drawSky()
+{
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
     glUseProgram(skyProgram);
@@ -232,7 +246,8 @@ void Renderer::drawSky() {
     glEnable(GL_DEPTH_TEST);
 }
 
-void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos) {
+void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
+{
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glUseProgram(worldProgram);
@@ -240,8 +255,10 @@ void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos) {
     glUniform3f(uCamPos, cameraPos.x, cameraPos.y, cameraPos.z);
 }
 
-void Renderer::draw(const GpuMesh& mesh, const Mat4& model) {
-    if (mesh.indexCount <= 0) {
+void Renderer::draw(const GpuMesh& mesh, const Mat4& model)
+{
+    if (mesh.indexCount <= 0)
+    {
         return;
     }
     glBindVertexArray(mesh.vao);
@@ -249,12 +266,14 @@ void Renderer::draw(const GpuMesh& mesh, const Mat4& model) {
     glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
 }
 
-void Renderer::beginHud() {
+void Renderer::beginHud()
+{
     hudVerts.clear();
     hudIndices.clear();
 }
 
-void Renderer::addQuad(float x0, float y0, float x1, float y1, float r, float g, float b, float a) {
+void Renderer::addQuad(float x0, float y0, float x1, float y1, float r, float g, float b, float a)
+{
     unsigned base = static_cast<unsigned>(hudVerts.size() / 6);
     float verts[] = {
         x0, y0, r, g, b, a, x1, y0, r, g, b, a, x1, y1, r, g, b, a, x0, y1, r, g, b, a,
@@ -264,11 +283,13 @@ void Renderer::addQuad(float x0, float y0, float x1, float y1, float r, float g,
     hudIndices.insert(hudIndices.end(), idx, idx + 6);
 }
 
-void Renderer::drawLine(float x0, float y0, float x1, float y1, float thickness, float r, float g, float b, float a) {
+void Renderer::drawLine(float x0, float y0, float x1, float y1, float thickness, float r, float g, float b, float a)
+{
     float dx = x1 - x0;
     float dy = y1 - y0;
     float len = std::sqrt(dx * dx + dy * dy);
-    if (len < 0.001f) {
+    if (len < 0.001f)
+    {
         return;
     }
     dx /= len;
@@ -285,26 +306,34 @@ void Renderer::drawLine(float x0, float y0, float x1, float y1, float thickness,
     hudIndices.insert(hudIndices.end(), idx, idx + 6);
 }
 
-void Renderer::drawText(float x, float y, float scale, const char* text, float r, float g, float b, float a) {
+void Renderer::drawText(float x, float y, float scale, const char* text, float r, float g, float b, float a)
+{
     float pen = x;
-    for (const char* cursor = text; *cursor; ++cursor) {
+    for (const char* cursor = text; *cursor; ++cursor)
+    {
         char c = *cursor;
-        if (c >= 'a' && c <= 'z') {
+        if (c >= 'a' && c <= 'z')
+        {
             c = static_cast<char>(c - 'a' + 'A');
         }
-        if (c == ' ') {
+        if (c == ' ')
+        {
             pen += 4.0f * scale;
             continue;
         }
         int index = glyphIndex(c);
-        if (index < 0) {
+        if (index < 0)
+        {
             pen += 6.0f * scale;
             continue;
         }
         const std::uint8_t* rows = kFont[index];
-        for (int row = 0; row < 7; ++row) {
-            for (int col = 0; col < 5; ++col) {
-                if ((rows[row] & (0x10 >> col)) == 0) {
+        for (int row = 0; row < 7; ++row)
+        {
+            for (int col = 0; col < 5; ++col)
+            {
+                if ((rows[row] & (0x10 >> col)) == 0)
+                {
                     continue;
                 }
                 float x0 = pen + float(col) * scale;
@@ -316,8 +345,10 @@ void Renderer::drawText(float x, float y, float scale, const char* text, float r
     }
 }
 
-void Renderer::flushHud() {
-    if (hudIndices.empty()) {
+void Renderer::flushHud()
+{
+    if (hudIndices.empty())
+    {
         return;
     }
     glDisable(GL_DEPTH_TEST);
@@ -328,17 +359,21 @@ void Renderer::flushHud() {
     glUniformMatrix4fv(uOrtho, 1, GL_FALSE, ortho.m);
     glBindVertexArray(hudVao);
     glBindBuffer(GL_ARRAY_BUFFER, hudVbo);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(hudVerts.size() * sizeof(float)), hudVerts.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(hudVerts.size() * sizeof(float)), hudVerts.data(),
+                 GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, hudIbo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(hudIndices.size() * sizeof(unsigned)), hudIndices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(hudIndices.size() * sizeof(unsigned)),
+                 hudIndices.data(), GL_DYNAMIC_DRAW);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(hudIndices.size()), GL_UNSIGNED_INT, nullptr);
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 }
 
-GpuMesh Renderer::upload(const CpuMesh& mesh) {
+GpuMesh Renderer::upload(const CpuMesh& mesh)
+{
     GpuMesh gpu;
-    if (mesh.indices.empty()) {
+    if (mesh.indices.empty())
+    {
         return gpu;
     }
     glGenVertexArrays(1, &gpu.vao);
@@ -346,9 +381,11 @@ GpuMesh Renderer::upload(const CpuMesh& mesh) {
     glGenBuffers(1, &gpu.ibo);
     glBindVertexArray(gpu.vao);
     glBindBuffer(GL_ARRAY_BUFFER, gpu.vbo);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(mesh.vertices.size() * sizeof(float)), mesh.vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(mesh.vertices.size() * sizeof(float)), mesh.vertices.data(),
+                 GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gpu.ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(mesh.indices.size() * sizeof(std::uint32_t)), mesh.indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(mesh.indices.size() * sizeof(std::uint32_t)),
+                 mesh.indices.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), reinterpret_cast<void*>(0));
     glEnableVertexAttribArray(1);

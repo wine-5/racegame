@@ -7,7 +7,8 @@
 
 // ポート: 外側（入力・メインループ・テスト）がゲームを動かすための入口。
 // 経過時間と入力を受け取り、固定ステップで車と計測を進める。描画は呼ばない。
-class GameSession {
+class GameSession
+{
 public:
     static constexpr double kFixedStepSec = 1.0 / 60.0;
 

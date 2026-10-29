@@ -5,7 +5,8 @@
 #include <string>
 #include <vector>
 
-struct TrackPose {
+struct TrackPose
+{
     bool found = false;
     float s = 0;
     float lateral = 0;  // 右が正
@@ -19,7 +20,8 @@ struct TrackPose {
     int nameId = -1;
 };
 
-struct TrackSample {
+struct TrackSample
+{
     float x = 0;
     float z = 0;
     float y = 0;
@@ -31,7 +33,8 @@ struct TrackSample {
 };
 
 // 鈴鹿サーキット。中心線は OSM、高さは国土地理院の標高。
-struct Track {
+struct Track
+{
     float originLat = 0;
     float originLon = 0;
     float halfWidth = 6.5f;

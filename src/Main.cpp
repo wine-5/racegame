@@ -23,18 +23,21 @@
 #include <cstring>
 #endif
 
-namespace {
+namespace
+{
 
 constexpr double kMaxFrameSec = 0.25;
 
-struct Orbit {
+struct Orbit
+{
     Vec3 eye{0, 8, -12};
     Vec3 look{0, 0, 0};
     bool ready = false;
     int mode = 0;
 };
 
-struct App {
+struct App
+{
     SDL_Window* window = nullptr;
     SDL_GLContext gl = nullptr;
     SdlInput input;
@@ -50,8 +53,10 @@ struct App {
     Uint64 prevCounter = 0;
 };
 
-void formatTime(char* buf, int size, float seconds) {
-    if (seconds < 0) {
+void formatTime(char* buf, int size, float seconds)
+{
+    if (seconds < 0)
+    {
         std::snprintf(buf, size, "--:--.---");
         return;
     }
@@ -60,24 +65,30 @@ void formatTime(char* buf, int size, float seconds) {
     std::snprintf(buf, size, "%d:%06.3f", minutes, rest);
 }
 
-void resetRace(App& app) {
+void resetRace(App& app)
+{
     app.session.reset();
     app.camera.ready = false;
 }
 
-void updateCamera(App& app, float dt) {
+void updateCamera(App& app, float dt)
+{
     const float back[3] = {8.6f, 4.1f, 16.0f};
     const float up[3] = {3.3f, 1.55f, 7.2f};
     const float ahead[3] = {9.0f, 6.0f, 14.0f};
     int mode = app.camera.mode;
     Vec3 forward{std::sin(app.session.car().yaw), 0, std::cos(app.session.car().yaw)};
-    Vec3 eye = Vec3{app.session.car().x, app.session.car().y, app.session.car().z} - forward * back[mode] + Vec3{0, up[mode], 0};
-    Vec3 look = Vec3{app.session.car().x, app.session.car().y, app.session.car().z} + forward * ahead[mode] + Vec3{0, 1.15f, 0};
+    Vec3 eye = Vec3{app.session.car().x, app.session.car().y, app.session.car().z} - forward * back[mode] +
+               Vec3{0, up[mode], 0};
+    Vec3 look =
+        Vec3{app.session.car().x, app.session.car().y, app.session.car().z} + forward * ahead[mode] + Vec3{0, 1.15f, 0};
     TrackPose under = app.session.track().query(eye.x, eye.z, app.session.car().y, app.session.car().ground.s);
-    if (under.found && under.xzDist < 30.0f && eye.y < under.centerY + 0.8f) {
+    if (under.found && under.xzDist < 30.0f && eye.y < under.centerY + 0.8f)
+    {
         eye.y = under.centerY + 0.8f;
     }
-    if (!app.camera.ready) {
+    if (!app.camera.ready)
+    {
         app.camera.eye = eye;
         app.camera.look = look;
         app.camera.ready = true;
@@ -88,7 +99,8 @@ void updateCamera(App& app, float dt) {
     app.camera.look = app.camera.look + (look - app.camera.look) * blend;
 }
 
-void drawMinimap(App& app) {
+void drawMinimap(App& app)
+{
     float size = 190.0f;
     float x0 = 24.0f;
     float y0 = float(app.renderer.height) - size - 28.0f;
@@ -97,7 +109,8 @@ void drawMinimap(App& app) {
     float maxX = minX;
     float minZ = app.session.track().samples[0].z;
     float maxZ = minZ;
-    for (const TrackSample& sample : app.session.track().samples) {
+    for (const TrackSample& sample : app.session.track().samples)
+    {
         minX = std::min(minX, sample.x);
         maxX = std::max(maxX, sample.x);
         minZ = std::min(minZ, sample.z);
@@ -109,11 +122,13 @@ void drawMinimap(App& app) {
     auto mapX = [&](float x) { return x0 + size * 0.5f + (x - midX) / span * (size - 18.0f); };
     auto mapY = [&](float z) { return y0 + size * 0.5f - (z - midZ) / span * (size - 18.0f); };
     const int n = static_cast<int>(app.session.track().samples.size());
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < n; ++i)
+    {
         const TrackSample& a = app.session.track().samples[i];
         const TrackSample& b = app.session.track().samples[(i + 1) % n];
         float r = 0.75f, g = 0.78f, bl = 0.82f;
-        if (a.bridge || b.bridge) {
+        if (a.bridge || b.bridge)
+        {
             r = 0.95f;
             g = 0.72f;
             bl = 0.28f;
@@ -135,7 +150,8 @@ void drawMinimap(App& app) {
     app.renderer.drawLine(lx, ly, rx, ry, 2.0f, 0.9f, 0.2f, 0.18f, 1);
 }
 
-void drawHud(App& app) {
+void drawHud(App& app)
+{
     Renderer& hud = app.renderer;
     hud.beginHud();
     char line[96];
@@ -143,9 +159,12 @@ void drawHud(App& app) {
     std::snprintf(line, sizeof(line), "%d KM/H", kmh);
     hud.drawText(24, 22, 4.0f, line, 0.95f, 0.96f, 0.98f, 1);
 
-    if (!app.session.lap().timing) {
+    if (!app.session.lap().timing)
+    {
         std::snprintf(line, sizeof(line), "OUT LAP");
-    } else {
+    }
+    else
+    {
         std::snprintf(line, sizeof(line), "LAP %d", app.session.lap().completed + 1);
     }
     hud.drawText(24, 64, 2.2f, line, 0.85f, 0.88f, 0.92f, 1);
@@ -159,63 +178,82 @@ void drawHud(App& app) {
 
     int percent = static_cast<int>(app.session.car().ground.s / app.session.track().length * 100.0f);
     const char* corner = app.session.track().nameOf(app.session.car().ground.nameId);
-    if (app.session.car().ground.corner > 0 && corner[0]) {
+    if (app.session.car().ground.corner > 0 && corner[0])
+    {
         std::snprintf(line, sizeof(line), "T%d %s  %d%%", app.session.car().ground.corner, corner, percent);
-    } else if (corner[0]) {
+    }
+    else if (corner[0])
+    {
         std::snprintf(line, sizeof(line), "%s  %d%%", corner, percent);
-    } else {
+    }
+    else
+    {
         std::snprintf(line, sizeof(line), "%d%%", percent);
     }
     hud.drawText(24, 116, 2.0f, line, 0.9f, 0.9f, 0.92f, 1);
 
     const char* camName = "CHASE";
-    if (app.camera.mode == 1) camName = "CLOSE";
-    if (app.camera.mode == 2) camName = "FAR";
+    if (app.camera.mode == 1)
+        camName = "CLOSE";
+    if (app.camera.mode == 2)
+        camName = "FAR";
     hud.drawText(float(hud.width) - 140, 22, 2.0f, camName, 0.8f, 0.84f, 0.88f, 1);
 
-    if (app.showHelp) {
+    if (app.showHelp)
+    {
         hud.drawText(24, float(hud.height) - 78, 1.7f,
-                     "W/UP ACCEL  S/DOWN BRAKE  A/D STEER  R RESET  C CAMERA  P PAUSE",
-                     0.9f, 0.92f, 0.94f, 1);
+                     "W/UP ACCEL  S/DOWN BRAKE  A/D STEER  R RESET  C CAMERA  P PAUSE", 0.9f, 0.92f, 0.94f, 1);
         hud.drawText(24, float(hud.height) - 54, 1.7f,
-                     "PAD: RT ACCEL  LT BRAKE  STICK STEER  Y CAMERA  BACK RESET  START PAUSE",
-                     0.75f, 0.8f, 0.84f, 1);
+                     "PAD: RT ACCEL  LT BRAKE  STICK STEER  Y CAMERA  BACK RESET  START PAUSE", 0.75f, 0.8f, 0.84f, 1);
     }
     hud.drawText(float(hud.width) - 250, float(hud.height) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
-    if (app.session.paused()) {
+    if (app.session.paused())
+    {
         hud.drawText(float(hud.width) * 0.5f - 70, float(hud.height) * 0.45f, 5.0f, "PAUSE", 1, 0.95f, 0.9f, 1);
     }
     drawMinimap(app);
     hud.flushHud();
 }
 
-float carPitch(const App& app) {
+float carPitch(const App& app)
+{
     Vec3 forward{std::sin(app.session.car().yaw), 0, std::cos(app.session.car().yaw)};
     float preferS = app.session.car().ground.found ? app.session.car().ground.s : -1.0f;
-    TrackPose ahead = app.session.track().query(app.session.car().x + forward.x * 2.4f, app.session.car().z + forward.z * 2.4f, app.session.car().y, preferS);
-    TrackPose behind = app.session.track().query(app.session.car().x - forward.x * 2.4f, app.session.car().z - forward.z * 2.4f, app.session.car().y, preferS);
-    if (!ahead.found || !behind.found) {
+    TrackPose ahead = app.session.track().query(app.session.car().x + forward.x * 2.4f,
+                                                app.session.car().z + forward.z * 2.4f, app.session.car().y, preferS);
+    TrackPose behind = app.session.track().query(app.session.car().x - forward.x * 2.4f,
+                                                 app.session.car().z - forward.z * 2.4f, app.session.car().y, preferS);
+    if (!ahead.found || !behind.found)
+    {
         return 0;
     }
     return std::atan2(ahead.centerY - behind.centerY, 4.8f);
 }
 
-void frame(void* userdata) {
+void frame(void* userdata)
+{
     App& app = *static_cast<App*>(userdata);
     InputFrame input = app.input.poll();
-    if (input.quit) app.running = false;
-    if (input.pause) app.session.togglePause();
-    if (input.camera) app.camera.mode = (app.camera.mode + 1) % 3;
-    if (input.help) app.showHelp = !app.showHelp;
-    if (input.reset) {
+    if (input.quit)
+        app.running = false;
+    if (input.pause)
+        app.session.togglePause();
+    if (input.camera)
+        app.camera.mode = (app.camera.mode + 1) % 3;
+    if (input.help)
+        app.showHelp = !app.showHelp;
+    if (input.reset)
+    {
         resetRace(app);
     }
 
     Uint64 now = SDL_GetPerformanceCounter();
     double elapsed = double(now - app.prevCounter) / double(SDL_GetPerformanceFrequency());
     app.prevCounter = now;
-    if (elapsed > kMaxFrameSec) elapsed = kMaxFrameSec;
-    if (elapsed < 0) elapsed = 0;
+    if (elapsed > kMaxFrameSec)
+        elapsed = kMaxFrameSec;
+    if (elapsed < 0)
+        elapsed = 0;
 
     app.session.advance(elapsed, input.drive);
     updateCamera(app, float(elapsed));
@@ -234,7 +272,8 @@ void frame(void* userdata) {
 
     Mat4 identity;
     app.renderer.draw(app.course, identity);
-    Mat4 shadow = mul(translation(app.session.car().x, app.session.car().y + 0.08f, app.session.car().z), rotationY(app.session.car().yaw));
+    Mat4 shadow = mul(translation(app.session.car().x, app.session.car().y + 0.08f, app.session.car().z),
+                      rotationY(app.session.car().yaw));
     app.renderer.draw(app.shadow, shadow);
 
     float pitch = carPitch(app);
@@ -244,8 +283,10 @@ void frame(void* userdata) {
     const float wheelX = 0.82f;
     const float wheelZ[2] = {1.42f, -1.38f};
     const float steerForWheel[2] = {app.session.car().steerAngle, 0};
-    for (int i = 0; i < 2; ++i) {
-        for (int side = -1; side <= 1; side += 2) {
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int side = -1; side <= 1; side += 2)
+        {
             Mat4 place = mul(translation(float(side) * wheelX, 0.34f, wheelZ[i]),
                              mul(rotationY(steerForWheel[i]), rotationX(app.session.car().wheelSpin)));
             app.renderer.draw(app.wheel, mul(model, place));
@@ -255,32 +296,39 @@ void frame(void* userdata) {
     SDL_GL_SwapWindow(app.window);
 
 #ifndef __EMSCRIPTEN__
-    if (!app.running) {
+    if (!app.running)
+    {
         // ネイティブの while が抜ける。
     }
 #endif
 }
 
-int selfTest(const Track& track) {
+int selfTest(const Track& track)
+{
     Car car;
     car.reset(track);
     float travelled = 0;
     float prevS = -1;
     float maxLat = 0;
-    for (int step = 0; step < 60 * 50; ++step) {
+    for (int step = 0; step < 60 * 50; ++step)
+    {
         TrackPose pose = track.query(car.x, car.z, car.y, car.ground.found ? car.ground.s : -1.0f);
         float lookS = pose.s + 70.0f;
-        if (lookS >= track.length) {
+        if (lookS >= track.length)
+        {
             lookS -= track.length;
         }
         int nearest = 0;
         float nearestGap = 1.0e9f;
-        for (int i = 0; i < static_cast<int>(track.samples.size()); i += 2) {
+        for (int i = 0; i < static_cast<int>(track.samples.size()); i += 2)
+        {
             float gap = std::fabs(track.samples[i].s - lookS);
-            if (gap > track.length * 0.5f) {
+            if (gap > track.length * 0.5f)
+            {
                 gap = track.length - gap;
             }
-            if (gap < nearestGap) {
+            if (gap < nearestGap)
+            {
                 nearestGap = gap;
                 nearest = i;
             }
@@ -297,41 +345,54 @@ int selfTest(const Track& track) {
         input.steer = clampf(input.steer - pose.lateral * 0.12f, -1.0f, 1.0f);
         input.throttle = bend < 0.15f ? 1.0f : 0.45f;
         input.brake = 0;
-        if (bend > 0.28f && car.speed > 22.0f) {
+        if (bend > 0.28f && car.speed > 22.0f)
+        {
             input.throttle = 0;
             input.brake = 1.0f;
-        } else if (bend > 0.12f && car.speed > 34.0f) {
+        }
+        else if (bend > 0.12f && car.speed > 34.0f)
+        {
             input.throttle = 0;
             input.brake = 0.55f;
         }
-        if (car.speed < 10.0f) {
+        if (car.speed < 10.0f)
+        {
             input.brake = 0;
             input.throttle = std::max(input.throttle, 0.5f);
         }
         car.update(1.0f / 60.0f, input, track);
         pose = track.query(car.x, car.z, car.y, car.ground.found ? car.ground.s : -1.0f);
-        if (prevS >= 0) {
+        if (prevS >= 0)
+        {
             float ds = pose.s - prevS;
-            if (ds < -track.length * 0.5f) ds += track.length;
-            if (ds > track.length * 0.5f) ds -= track.length;
-            if (ds > 0) travelled += ds;
+            if (ds < -track.length * 0.5f)
+                ds += track.length;
+            if (ds > track.length * 0.5f)
+                ds -= track.length;
+            if (ds > 0)
+                travelled += ds;
         }
         prevS = pose.s;
         maxLat = std::max(maxLat, pose.xzDist);
-        if (!std::isfinite(car.x) || !std::isfinite(car.speed) || !std::isfinite(car.yaw)) {
+        if (!std::isfinite(car.x) || !std::isfinite(car.speed) || !std::isfinite(car.yaw))
+        {
             std::printf("self-test non-finite\n");
             return 1;
         }
     }
-    std::printf("self-test length %.0f travelled %.0f maxLat %.1f speed %.1f km/h\n",
-                track.length, travelled, maxLat, car.speed * 3.6f);
-    if (track.length < 5200.0f || track.length > 6500.0f) return 2;
-    if (travelled < 1200.0f) return 3;
-    if (maxLat > 30.0f) return 4;
+    std::printf("self-test length %.0f travelled %.0f maxLat %.1f speed %.1f km/h\n", track.length, travelled, maxLat,
+                car.speed * 3.6f);
+    if (track.length < 5200.0f || track.length > 6500.0f)
+        return 2;
+    if (travelled < 1200.0f)
+        return 3;
+    if (maxLat > 30.0f)
+        return 4;
     return 0;
 }
 
-bool initGl(App& app) {
+bool initGl(App& app)
+{
 #ifdef __EMSCRIPTEN__
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -345,17 +406,20 @@ bool initGl(App& app) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     app.window = SDL_CreateWindow("Suzuka Circuit", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720,
                                   SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
-    if (!app.window) {
+    if (!app.window)
+    {
         SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
         return false;
     }
     app.gl = SDL_GL_CreateContext(app.window);
-    if (!app.gl) {
+    if (!app.gl)
+    {
         SDL_Log("SDL_GL_CreateContext failed: %s", SDL_GetError());
         return false;
     }
     SDL_GL_SetSwapInterval(1);
-    if (!app.renderer.init()) {
+    if (!app.renderer.init())
+    {
         SDL_Log("GL init failed");
         return false;
     }
@@ -364,34 +428,41 @@ bool initGl(App& app) {
 
 }  // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     bool test = argc > 1 && std::strcmp(argv[1], "--self-test") == 0;
     GameSession session;
     TrackFile trackFile(TrackFile::findDefaultPath());
-    if (!session.start(trackFile)) {
+    if (!session.start(trackFile))
+    {
         std::fprintf(stderr, "コースを読めません: %s\n", trackFile.path().c_str());
         return 1;
     }
-    if (test) {
+    if (test)
+    {
         return selfTest(session.track());
     }
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0)
+    {
         std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
     bool imageOk = (IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != 0;
-    if (!imageOk) {
+    if (!imageOk)
+    {
         SDL_Log("IMG_Init failed: %s", IMG_GetError());
     }
     bool audioOk = Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) == 0;
-    if (!audioOk) {
+    if (!audioOk)
+    {
         SDL_Log("Mix_OpenAudio failed: %s", Mix_GetError());
     }
 
     App app;
     app.session = std::move(session);
-    if (!initGl(app)) {
+    if (!initGl(app))
+    {
         SDL_Quit();
         return 1;
     }
@@ -413,22 +484,27 @@ int main(int argc, char** argv) {
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop_arg(frame, &app, 0, 1);
 #else
-    while (app.running) {
+    while (app.running)
+    {
         Uint64 frameStart = SDL_GetPerformanceCounter();
         frame(&app);
-        double frameMs = double(SDL_GetPerformanceCounter() - frameStart) / double(SDL_GetPerformanceFrequency()) * 1000.0;
-        if (frameMs < 14.0) {
+        double frameMs =
+            double(SDL_GetPerformanceCounter() - frameStart) / double(SDL_GetPerformanceFrequency()) * 1000.0;
+        if (frameMs < 14.0)
+        {
             SDL_Delay(static_cast<Uint32>(14.0 - frameMs));
         }
     }
 #endif
 
     app.input.close();
-    if (audioOk) {
+    if (audioOk)
+    {
         Mix_CloseAudio();
         Mix_Quit();
     }
-    if (imageOk) IMG_Quit();
+    if (imageOk)
+        IMG_Quit();
     SDL_GL_DeleteContext(app.gl);
     SDL_DestroyWindow(app.window);
     SDL_Quit();

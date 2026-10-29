@@ -5,7 +5,8 @@
 #include <SDL.h>
 
 // 1 フレーム分の入力。運転の入力と、押した瞬間だけ立つ操作。
-struct InputFrame {
+struct InputFrame
+{
     DriveInput drive;
     bool quit = false;
     bool reset = false;
@@ -15,7 +16,8 @@ struct InputFrame {
 };
 
 // キーボード・ゲームパッド（ブラウザでは Gamepad API）を読んで InputFrame にする。
-class SdlInput {
+class SdlInput
+{
 public:
     void open();
     void close();

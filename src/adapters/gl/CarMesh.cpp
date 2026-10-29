@@ -2,7 +2,8 @@
 
 #include <cmath>
 
-void buildCarBody(CpuMesh& mesh) {
+void buildCarBody(CpuMesh& mesh)
+{
     const Vec3 red{0.72f, 0.08f, 0.09f};
     const Vec3 dark{0.06f, 0.06f, 0.07f};
     const Vec3 carbon{0.12f, 0.12f, 0.13f};
@@ -15,13 +16,15 @@ void buildCarBody(CpuMesh& mesh) {
     mesh.addBox({-0.15f, 0.95f, -2.05f}, {0.15f, 1.15f, -1.9f}, carbon);
 }
 
-void buildCarWheel(CpuMesh& mesh) {
+void buildCarWheel(CpuMesh& mesh)
+{
     const int seg = 14;
     const float radius = 0.34f;
     const float halfW = 0.15f;
     const Vec3 tire{0.07f, 0.07f, 0.08f};
     const Vec3 rim{0.72f, 0.74f, 0.76f};
-    for (int i = 0; i < seg; ++i) {
+    for (int i = 0; i < seg; ++i)
+    {
         float a0 = float(i) / float(seg) * 6.2831853f;
         float a1 = float(i + 1) / float(seg) * 6.2831853f;
         float c0 = std::cos(a0);
@@ -34,7 +37,8 @@ void buildCarWheel(CpuMesh& mesh) {
         Vec3 c{halfW, c1 * radius, s1 * radius};
         Vec3 d{-halfW, c1 * radius, s1 * radius};
         mesh.addQuad(a, b, c, d, normal, tire);
-        for (int side = -1; side <= 1; side += 2) {
+        for (int side = -1; side <= 1; side += 2)
+        {
             float x = float(side) * halfW;
             Vec3 nrm{float(side), 0, 0};
             Vec3 center{x, 0, 0};
@@ -48,12 +52,14 @@ void buildCarWheel(CpuMesh& mesh) {
     }
 }
 
-void buildCarShadow(CpuMesh& mesh) {
+void buildCarShadow(CpuMesh& mesh)
+{
     const Vec3 ink{0.02f, 0.02f, 0.025f};
     mesh.addQuad({-1.05f, 0, -2.1f}, {1.05f, 0, -2.1f}, {1.05f, 0, 2.15f}, {-1.05f, 0, 2.15f}, {0, 1, 0}, ink);
 }
 
-Mat4 carModelMatrix(const Car& car, float pitch, float roll) {
+Mat4 carModelMatrix(const Car& car, float pitch, float roll)
+{
     Vec3 forward = normalize(Vec3{
         std::sin(car.yaw) * std::cos(pitch),
         std::sin(pitch),

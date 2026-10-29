@@ -1,18 +1,20 @@
 #pragma once
 
-#include "domain/Geom.hpp"
 #include "adapters/gl/CpuMesh.hpp"
+#include "domain/Geom.hpp"
 
 #include <vector>
 
-struct GpuMesh {
+struct GpuMesh
+{
     unsigned vao = 0;
     unsigned vbo = 0;
     unsigned ibo = 0;
     int indexCount = 0;
 };
 
-struct Renderer {
+struct Renderer
+{
     int width = 1280;
     int height = 720;
 
