@@ -4,33 +4,50 @@
         "dockerfile": "Dockerfile"
     },
 
-    // Linux ネイティブ版のゲームウィンドウを表示するための軽量デスクトップ。
-    // ブラウザで http://localhost:6080 を開くとコンテナ内の画面が見えます。
-    // （パスワードは vscode）
+    // VS Codeと拡張機能を一般ユーザーで実行する
+    // Claude Codeのroot権限エラーを回避する
+    "remoteUser": "emscripten",
+
+    // Claude Code のログイン情報とメモリ（~/.claude）をボリュームに置く。
+    // コンテナを Rebuild しても消えない。
+    "mounts": [
+        "source=racegame-claude-config,target=/home/emscripten/.claude,type=volume"
+    ],
+
+    // Linux ネイティブ版のゲームウィンドウを表示するための軽量デスクトップ
     "features": {
         "ghcr.io/devcontainers/features/desktop-lite:1": {}
     },
 
-    // コンテナ内で有効化するVS Code拡張機能
+    // コンテナ内で有効化するVS Code拡張機能と設定
     "customizations": {
         "vscode": {
             "extensions": [
                 "ms-vscode.cpptools",
                 "twxs.cmake",
                 "ms-vscode.cmake-tools",
-                // wasm(C++) を VS Code でデバッグするために必要（変数の確認に使用）
                 "ms-vscode.wasm-dwarf-debugging",
-                "GitHub.copilot"
-            ]
+                "GitHub.copilot",
+                // Rebuild のたびに入れ直さなくて済むようにする
+                "anthropic.claude-code"
+            ],
+            "settings": {
+                // Claude Codeの権限確認をスキップできるようにする
+                "claudeCode.allowDangerouslySkipPermissions": true,
+
+                // Claude Codeの初期権限モード
+                "claudeCode.initialPermissionMode": "bypassPermissions"
+            }
         }
     },
 
     // 8080: ブラウザ版を配信するWebサーバー
-    // 6080: Linux ネイティブ版の画面を見るためのデスクトップ（noVNC）
-    // forwardPorts はエディタのポート転送だけなので、ホストのブラウザの
-    // localhost には届かない。Docker がポートを公開する。
+    // 6080: Linux ネイティブ版の画面を見るためのデスクトップ
     "forwardPorts": [8080, 6080],
-    "runArgs": ["--publish", "8080:8080", "--publish", "6080:6080"],
+    "runArgs": [
+        "--publish", "8080:8080",
+        "--publish", "6080:6080"
+    ],
     "portsAttributes": {
         "8080": {
             "label": "ブラウザ版のWebサーバー"
@@ -40,9 +57,8 @@
         }
     },
 
-    // DISPLAY          : ネイティブ版のウィンドウを上のデスクトップに表示する
-    // SDL_AUDIODRIVER  : コンテナには音声デバイスが無いため、ダミーで代用する。
-    //                    これを指定しないと Mix_OpenAudio が失敗して起動できない。
+    // DISPLAY: ネイティブ版のウィンドウ表示
+    // SDL_AUDIODRIVER: 音声デバイスの代わりにダミーを使用
     "remoteEnv": {
         "DISPLAY": ":1",
         "SDL_AUDIODRIVER": "dummy"

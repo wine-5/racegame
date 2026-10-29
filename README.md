@@ -31,17 +31,19 @@ Cursor または VS Code でこのフォルダを開き、**Reopen in Container*
 
 ## ドリフトの課題
 
-滑らない動きは `Car::stepGrip`（`src/car.cpp`）だけです。速度は車体の前を向き、横滑りはしません。ドリフトはこの関数を差し替えて作ります。アクセル、ブレーキ、壁、路面の高さは `Car::update` 側です。
+滑らない動きは `Car::stepGrip`（`src/domain/Car.cpp`）だけです。速度は車体の前を向き、横滑りはしません。ドリフトはこの関数を差し替えて作ります。アクセル、ブレーキ、壁、路面の高さは `Car::update` 側です。
 
 ## ブラウザ版
 
+VS Code では、実行とデバッグで「Chrome で racegame をデバッグ」を選んで F5 を押すと、ビルド・サーバーの起動・Chrome の起動まで自動で行います。
+
 ```bash
-emcmake cmake -B build
-cmake --build build
+emcmake cmake -B build-web
+cmake --build build-web
 python3 -m http.server 8080
 ```
 
-`http://localhost:8080/build/racegame.html`
+`http://localhost:8080/build-web/racegame.html`
 
 ## Linux 版
 

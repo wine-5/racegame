@@ -5,9 +5,10 @@
       "name": "Chrome で racegame をデバッグ",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:8080/build/racegame.html",
+      "url": "http://localhost:8080/build-web/racegame.html",
       "webRoot": "${workspaceFolder}",
-      "browserLaunchLocation": "ui"
+      "browserLaunchLocation": "ui",
+      "preLaunchTask": "ブラウザ版を準備"
     },
     {
       "name": "Linux 版をデバッグ",
