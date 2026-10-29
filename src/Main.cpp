@@ -1,5 +1,6 @@
 #include "adapters/file/TrackFile.hpp"
 #include "adapters/gl/CarMesh.hpp"
+#include "adapters/gl/ChaseCamera.hpp"
 #include "adapters/gl/Renderer.hpp"
 #include "adapters/gl/TrackMesh.hpp"
 #include "adapters/sdl/SdlInput.hpp"
@@ -32,6 +33,7 @@ using adapters::gl::buildCarShadow;
 using adapters::gl::buildCarWheel;
 using adapters::gl::buildTrackMesh;
 using adapters::gl::carModelMatrix;
+using adapters::gl::ChaseCamera;
 using adapters::gl::CpuMesh;
 using adapters::gl::GpuMesh;
 using adapters::gl::Renderer;
@@ -56,14 +58,6 @@ using domain::wrapPi;
 
 constexpr double MAX_FRAME_SEC = 0.25;
 
-struct Orbit
-{
-    Vec3 eye{0, 8, -12};
-    Vec3 look{0, 0, 0};
-    bool ready{};
-    int mode{};
-};
-
 struct App
 {
     SDL_Window* window{};
@@ -75,7 +69,7 @@ struct App
     GpuMesh body;
     GpuMesh wheel;
     GpuMesh shadow;
-    Orbit camera;
+    ChaseCamera camera;
     bool running{true};
     bool showHelp{true};
     Uint64 prevCounter{};
@@ -96,35 +90,7 @@ void formatTime(char* buf, int size, float seconds)
 void resetRace(App& app)
 {
     app.session.reset();
-    app.camera.ready = false;
-}
-
-void updateCamera(App& app, float dt)
-{
-    const float back[3] = {8.6f, 4.1f, 16.0f};
-    const float up[3] = {3.3f, 1.55f, 7.2f};
-    const float ahead[3] = {9.0f, 6.0f, 14.0f};
-    int mode = app.camera.mode;
-    Vec3 forward{std::sin(app.session.car().yaw), 0, std::cos(app.session.car().yaw)};
-    Vec3 eye = Vec3{app.session.car().x, app.session.car().y, app.session.car().z} - forward * back[mode] +
-               Vec3{0, up[mode], 0};
-    Vec3 look =
-        Vec3{app.session.car().x, app.session.car().y, app.session.car().z} + forward * ahead[mode] + Vec3{0, 1.15f, 0};
-    TrackPose under = app.session.track().query(eye.x, eye.z, app.session.car().y, app.session.car().ground.s);
-    if (under.found && under.xzDist < 30.0f && eye.y < under.centerY + 0.8f)
-    {
-        eye.y = under.centerY + 0.8f;
-    }
-    if (!app.camera.ready)
-    {
-        app.camera.eye = eye;
-        app.camera.look = look;
-        app.camera.ready = true;
-        return;
-    }
-    float blend = 1.0f - std::exp(-dt * 7.0f);
-    app.camera.eye = app.camera.eye + (eye - app.camera.eye) * blend;
-    app.camera.look = app.camera.look + (look - app.camera.look) * blend;
+    app.camera.snap();
 }
 
 void drawMinimap(App& app)
@@ -220,12 +186,7 @@ void drawHud(App& app)
     }
     hud.drawText(24, 116, 2.0f, line, 0.9f, 0.9f, 0.92f, 1);
 
-    const char* camName = "CHASE";
-    if (app.camera.mode == 1)
-        camName = "CLOSE";
-    if (app.camera.mode == 2)
-        camName = "FAR";
-    hud.drawText(float(hud.width) - 140, 22, 2.0f, camName, 0.8f, 0.84f, 0.88f, 1);
+    hud.drawText(float(hud.width) - 140, 22, 2.0f, app.camera.modeName(), 0.8f, 0.84f, 0.88f, 1);
 
     if (app.showHelp)
     {
@@ -267,7 +228,7 @@ void frame(void* userdata)
     if (input.pause)
         app.session.togglePause();
     if (input.camera)
-        app.camera.mode = (app.camera.mode + 1) % 3;
+        app.camera.cycleMode();
     if (input.help)
         app.showHelp = !app.showHelp;
     if (input.reset)
@@ -284,7 +245,7 @@ void frame(void* userdata)
         elapsed = 0;
 
     app.session.advance(elapsed, input.drive);
-    updateCamera(app, float(elapsed));
+    app.camera.update(app.session.car(), app.session.track(), float(elapsed));
 
     int drawableW = 0;
     int drawableH = 0;
@@ -295,8 +256,8 @@ void frame(void* userdata)
 
     float aspect = float(drawableW) / float(drawableH > 0 ? drawableH : 1);
     Mat4 proj = perspective(60.0f * 3.14159265f / 180.0f, aspect, 0.15f, 4000.0f);
-    Mat4 view = lookAt(app.camera.eye, app.camera.look, {0, 1, 0});
-    app.renderer.beginWorld(mul(proj, view), app.camera.eye);
+    Mat4 view = lookAt(app.camera.eye(), app.camera.look(), {0, 1, 0});
+    app.renderer.beginWorld(mul(proj, view), app.camera.eye());
 
     Mat4 identity;
     app.renderer.draw(app.course, identity);
