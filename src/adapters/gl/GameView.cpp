@@ -152,6 +152,7 @@ PostEffects GameView::feel(const application::GameSession& session, float dt)
     {
         m_flash = 0.16f;
         m_flashColor = {1.0f, 0.3f, 0.8f};
+        m_camera.shake(0.25f);
     }
     bool newResult{drift.sinceLastResult() < m_lastSinceResult &&
                    drift.lastResult() != domain::DriftScore::Result::None};
@@ -160,6 +161,7 @@ PostEffects GameView::feel(const application::GameSession& session, float dt)
         bool banked{drift.lastResult() == domain::DriftScore::Result::Banked};
         m_flash = banked ? 0.22f : 0.35f;
         m_flashColor = banked ? Vec3{1.0f, 0.95f, 0.8f} : Vec3{1.0f, 0.15f, 0.1f};
+        m_camera.shake(banked ? 0.15f : 1.0f);
     }
     m_lastMultiplier = drift.chaining() ? drift.multiplier() : 1;
     m_lastSinceResult = drift.sinceLastResult();
