@@ -6,6 +6,7 @@
 #include "adapters/gl/Renderer.hpp"
 #include "adapters/gl/Scenery.hpp"
 #include "adapters/gl/SkidMarks.hpp"
+#include "adapters/gl/Sparks.hpp"
 #include "adapters/gl/TireSmoke.hpp"
 #include "application/GameSession.hpp"
 
@@ -54,6 +55,7 @@ public:
         m_camera.snap();
         m_smoke.clear();
         m_skidMarks.clear();
+        m_sparks.clear();
         m_skidMarksDirty = true;
     }
 
@@ -100,6 +102,8 @@ private:
     GpuMesh m_shadow;
     ChaseCamera m_camera;
     TireSmoke m_smoke;
+    Sparks m_sparks;
+    std::vector<Billboard> m_glows;  // 光る板（火花・光の尾）
     SkidMarks m_skidMarks;
     CpuMesh m_skidMesh;
     GpuMesh m_skidGpu;
