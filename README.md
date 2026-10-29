@@ -107,7 +107,7 @@ VS Code では、実行とデバッグで「Chrome で racegame をデバッグ�
 ```bash
 emcmake cmake -B build-web
 cmake --build build-web
-python3 -m http.server 8080
+python3 tools/serve.py 8080  # キャッシュさせないサーバー
 ```
 
 `http://localhost:8080/build-web/racegame.html`
