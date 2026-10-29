@@ -32,6 +32,7 @@ struct Car
     float wheelSpin{};
     float brakeHold{};  // 止まってから後退に入るまでの待ち時間
     bool onAsphalt{true};
+    bool hitWall{};  // 直前のステップで壁に当たったか
     TrackPose ground;
 
     /**

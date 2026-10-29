@@ -101,6 +101,7 @@ void Car::reset(const Track& track)
     wheelSpin = 0;
     brakeHold = 0;
     onAsphalt = true;
+    hitWall = false;
     ground = track.query(x, z, y);
 }
 
@@ -302,9 +303,11 @@ void Car::update(float dt, const DriveInput& input, const Track& track)
         return;
     }
 
+    hitWall = false;
     const float wall{track.wallLateral()};
     if (std::fabs(ground.lateral) > wall)
     {
+        hitWall = true;
         float sign{ground.lateral > 0 ? 1.0f : -1.0f};
         float overflow{std::fabs(ground.lateral) - wall};
         x -= ground.rightX * sign * overflow;
