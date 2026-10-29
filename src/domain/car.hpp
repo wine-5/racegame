@@ -1,6 +1,5 @@
 #pragma once
 
-#include "domain/meshbuild.hpp"
 #include "domain/track.hpp"
 
 struct DriveInput {
@@ -27,8 +26,3 @@ struct Car {
     // グリップしたまま進む。ドリフトの課題ではこの関数を差し替える。
     void stepGrip(float dt);
 };
-
-void buildCarBody(CpuMesh& mesh);
-void buildCarWheel(CpuMesh& mesh);
-void buildCarShadow(CpuMesh& mesh);
-Mat4 carModelMatrix(const Car& car, float pitch, float roll);

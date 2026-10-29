@@ -1,4 +1,5 @@
 #include "adapters/file/track_file.hpp"
+#include "adapters/gl/car_mesh.hpp"
 #include "adapters/gl/render.hpp"
 #include "adapters/gl/track_mesh.hpp"
 #include "domain/car.hpp"

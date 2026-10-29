@@ -39,6 +39,7 @@ target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 add_executable(racegame
     src/main.cpp
     src/adapters/file/track_file.cpp
+    src/adapters/gl/car_mesh.cpp
     src/adapters/gl/render.cpp
     src/adapters/gl/track_mesh.cpp
 )
