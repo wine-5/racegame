@@ -253,7 +253,6 @@ bool Track::load(const std::string& path) {
     int expectNames = 0;
     int expectSamples = 0;
     int expectPit = 0;
-    std::vector<Vec3> pit;
     std::string line;
     while (std::getline(in, line)) {
         if (line.empty() || line[0] == '#') {

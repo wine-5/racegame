@@ -44,6 +44,7 @@ struct Track {
     float spawnYaw = 0;
     std::vector<TrackSample> samples;
     std::vector<std::string> names;
+    std::vector<Vec3> pit;  // ピットレーンの中心線。走行には使わない
     CpuMesh visual;
 
     bool load(const std::string& path);
