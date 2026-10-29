@@ -1,91 +1,8 @@
 #include "domain/track.hpp"
 
 #include <cmath>
-#include <fstream>
-#include <sstream>
 
-bool Track::load(const std::string& path) {
-    std::ifstream in(path);
-    if (!in) {
-        return false;
-    }
-
-    enum class Mode { Top, Names, Samples, Pit };
-    Mode mode = Mode::Top;
-    int expectNames = 0;
-    int expectSamples = 0;
-    int expectPit = 0;
-    std::string line;
-    while (std::getline(in, line)) {
-        if (line.empty() || line[0] == '#') {
-            continue;
-        }
-        std::istringstream ss(line);
-        if (mode == Mode::Names) {
-            int id = 0;
-            ss >> id;
-            std::string name;
-            std::getline(ss, name);
-            if (!name.empty() && name[0] == ' ') {
-                name.erase(0, 1);
-            }
-            names.push_back(name);
-            if (static_cast<int>(names.size()) >= expectNames) {
-                mode = Mode::Top;
-            }
-            continue;
-        }
-        if (mode == Mode::Samples) {
-            TrackSample sample;
-            int bridge = 0;
-            ss >> sample.x >> sample.z >> sample.y >> sample.cross >> bridge >> sample.corner >> sample.nameId;
-            if (ss.fail()) {
-                return false;
-            }
-            sample.bridge = bridge != 0;
-            samples.push_back(sample);
-            if (static_cast<int>(samples.size()) >= expectSamples) {
-                mode = Mode::Top;
-            }
-            continue;
-        }
-        if (mode == Mode::Pit) {
-            Vec3 point;
-            ss >> point.x >> point.z >> point.y;
-            if (ss.fail()) {
-                return false;
-            }
-            pit.push_back(point);
-            if (static_cast<int>(pit.size()) >= expectPit) {
-                mode = Mode::Top;
-            }
-            continue;
-        }
-
-        std::string key;
-        ss >> key;
-        if (key == "origin") {
-            ss >> originLat >> originLon;
-        } else if (key == "half_width") {
-            ss >> halfWidth;
-        } else if (key == "curb_width") {
-            ss >> curbWidth;
-        } else if (key == "length") {
-            ss >> length;
-        } else if (key == "spawn") {
-            ss >> spawnX >> spawnY >> spawnZ >> spawnYaw;
-        } else if (key == "names") {
-            ss >> expectNames;
-            mode = Mode::Names;
-        } else if (key == "samples") {
-            ss >> expectSamples;
-            mode = Mode::Samples;
-        } else if (key == "pit") {
-            ss >> expectPit;
-            mode = expectPit > 0 ? Mode::Pit : Mode::Top;
-        }
-    }
-
+bool Track::finalize() {
     if (samples.size() < 16) {
         return false;
     }
@@ -97,7 +14,6 @@ bool Track::load(const std::string& path) {
         const TrackSample& b = samples[(i + 1) % samples.size()];
         length += std::sqrt((b.x - a.x) * (b.x - a.x) + (b.z - a.z) * (b.z - a.z));
     }
-
     return true;
 }
 

@@ -46,7 +46,8 @@ struct Track {
     std::vector<std::string> names;
     std::vector<Vec3> pit;  // ピットレーンの中心線。走行には使わない
 
-    bool load(const std::string& path);
+    // samples を埋めたあとに呼ぶ。周回距離 s と全長を計算する。点が足りなければ false。
+    bool finalize();
     // preferS が 0 以上のときは、その周回位置に近い路面を優先する。立体交差で上下を取り違えない。
     TrackPose query(float x, float z, float yHint, float preferS = -1.0f) const;
     float wallLateral() const { return halfWidth + curbWidth + runoff; }

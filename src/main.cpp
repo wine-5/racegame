@@ -1,6 +1,7 @@
-#include "domain/car.hpp"
+#include "adapters/file/track_file.hpp"
 #include "adapters/gl/render.hpp"
 #include "adapters/gl/track_mesh.hpp"
+#include "domain/car.hpp"
 #include "domain/track.hpp"
 
 #include <SDL.h>
@@ -11,7 +12,6 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
-#include <fstream>
 #include <string>
 #include <utility>
 
@@ -61,21 +61,6 @@ struct App {
     double accumulator = 0;
     Uint64 prevCounter = 0;
 };
-
-std::string findTrackPath() {
-    const char* paths[] = {
-        "assets/track/suzuka.txt",
-        "../assets/track/suzuka.txt",
-        "/assets/track/suzuka.txt",
-    };
-    for (const char* path : paths) {
-        std::ifstream in(path);
-        if (in) {
-            return path;
-        }
-    }
-    return paths[0];
-}
 
 void formatTime(char* buf, int size, float seconds) {
     if (seconds < 0) {
@@ -599,9 +584,10 @@ bool initGl(App& app) {
 int main(int argc, char** argv) {
     bool test = argc > 1 && std::strcmp(argv[1], "--self-test") == 0;
     Track track;
-    std::string path = findTrackPath();
-    if (!track.load(path)) {
-        std::fprintf(stderr, "コースを読めません: %s\n", path.c_str());
+    TrackFile trackFile(TrackFile::findDefaultPath());
+    TrackSource& trackSource = trackFile;
+    if (!trackSource.load(track)) {
+        std::fprintf(stderr, "コースを読めません: %s\n", trackFile.path().c_str());
         return 1;
     }
     if (test) {
