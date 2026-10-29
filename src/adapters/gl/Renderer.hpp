@@ -134,8 +134,10 @@ public:
      * @param items 描く板。並べ替えるので書き換わる
      * @param cameraRight カメラの右方向
      * @param cameraUp カメラの上方向
+     * @param glowing true なら光の当たり方に関係なく光り、重なるほど明るくなる（火花・光の尾）
      */
-    void drawBillboards(std::vector<Billboard>& items, domain::Vec3 cameraRight, domain::Vec3 cameraUp);
+    void drawBillboards(std::vector<Billboard>& items, domain::Vec3 cameraRight, domain::Vec3 cameraUp,
+                        bool glowing = false);
 
     /// HUD の描画を始める。以降の addQuad / drawLine / drawText は flushHud でまとめて描く
     void beginHud();
@@ -250,6 +252,7 @@ private:
     int m_uParticleAmbient{-1};
     int m_uParticleFogColor{-1};
     int m_uParticleFog{-1};
+    int m_uParticleGlow{-1};
     Lighting m_lighting;
     int m_lightCount{};
     float m_lightPos[MAX_POINT_LIGHTS * 4]{};

@@ -146,10 +146,15 @@ const int MAX_LIGHTS = 24;
 uniform int uLightCount;
 uniform vec4 uLightPos[MAX_LIGHTS];  // xyz が位置、w が光の届く距離
 uniform vec3 uLightColor[MAX_LIGHTS];
+uniform int uGlow;  // 1 なら光の当たり方に関係なく、その色で光る（火花・光の尾）
 out vec4 fragColor;
 void main() {
     // 中心が濃く、縁にいくほど薄い丸
     float edge = 1.0 - smoothstep(0.2, 1.0, length(vUv));
+    if (uGlow == 1) {
+        fragColor = vec4(vColor.rgb, vColor.a * edge * edge);
+        return;
+    }
     // 煙は向きを持たないので、光は向きに関係なく当たるとする
     vec3 light = min(uAmbient + uSunColor, vec3(1.0));
     for (int i = 0; i < MAX_LIGHTS; ++i) {
@@ -236,6 +241,7 @@ bool Renderer::init()
     m_uParticleAmbient = glGetUniformLocation(m_particleProgram, "uAmbient");
     m_uParticleFogColor = glGetUniformLocation(m_particleProgram, "uFogColor");
     m_uParticleFog = glGetUniformLocation(m_particleProgram, "uFog");
+    m_uParticleGlow = glGetUniformLocation(m_particleProgram, "uGlow");
     m_uLightCount = glGetUniformLocation(m_worldProgram, "uLightCount");
     m_uLightPos = glGetUniformLocation(m_worldProgram, "uLightPos");
     m_uLightColor = glGetUniformLocation(m_worldProgram, "uLightColor");
@@ -341,7 +347,7 @@ void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
     m_cameraPos = cameraPos;
 }
 
-void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, Vec3 cameraUp)
+void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, Vec3 cameraUp, bool glowing)
 {
     if (items.empty())
     {
@@ -370,7 +376,8 @@ void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, V
     }
 
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // 光るものは足し合わせ（重なるほど明るい）、煙は普通に重ねる
+    glBlendFunc(GL_SRC_ALPHA, glowing ? GL_ONE : GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
     glUseProgram(m_particleProgram);
     glUniformMatrix4fv(m_uParticleViewProj, 1, GL_FALSE, m_viewProj.m);
@@ -379,6 +386,7 @@ void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, V
     glUniform3f(m_uParticleSunColor, l.sunColor.x, l.sunColor.y, l.sunColor.z);
     glUniform3f(m_uParticleAmbient, l.ambient.x, l.ambient.y, l.ambient.z);
     glUniform3f(m_uParticleFogColor, l.fogColor.x, l.fogColor.y, l.fogColor.z);
+    glUniform1i(m_uParticleGlow, glowing ? 1 : 0);
     glUniform2f(m_uParticleFog, l.fogStart, l.fogRange);
     glUniform1i(m_uParticleLightCount, m_lightCount);
     glUniform4fv(m_uParticleLightPos, MAX_POINT_LIGHTS, m_lightPos);
