@@ -20,6 +20,7 @@ constexpr float RAD_TO_DEG = 57.29578f;
 void DriftScore::update(const Car& car, float dt)
 {
     m_sinceLastResult += dt;
+    m_sinceMultiplierUp += dt;
 
     if (m_chaining && car.hitWall)
     {
@@ -42,6 +43,7 @@ void DriftScore::update(const Car& car, float dt)
         {
             // 左右の切り返しで倍率が上がる
             ++m_multiplier;
+            m_sinceMultiplierUp = 0;
         }
         m_direction = direction;
         m_graceTime = 0;
