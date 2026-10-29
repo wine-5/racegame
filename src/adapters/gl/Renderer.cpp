@@ -506,6 +506,36 @@ GpuMesh Renderer::upload(const CpuMesh& mesh)
     return gpu;
 }
 
+void Renderer::drawDecal(const GpuMesh& mesh)
+{
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1.0f, -4.0f);
+    Mat4 identity;
+    draw(mesh, identity);
+    glDisable(GL_POLYGON_OFFSET_FILL);
+}
+
+void Renderer::update(GpuMesh& gpu, const CpuMesh& mesh)
+{
+    if (gpu.vao == 0)
+    {
+        if (!mesh.indices.empty())
+        {
+            gpu = upload(mesh);
+        }
+        return;
+    }
+    glBindVertexArray(gpu.vao);
+    glBindBuffer(GL_ARRAY_BUFFER, gpu.vbo);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(mesh.vertices.size() * sizeof(float)), mesh.vertices.data(),
+                 GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gpu.ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(mesh.indices.size() * sizeof(std::uint32_t)),
+                 mesh.indices.data(), GL_DYNAMIC_DRAW);
+    gpu.indexCount = static_cast<int>(mesh.indices.size());
+    glBindVertexArray(m_dummyVao);
+}
+
 void Renderer::readPixels(std::vector<std::uint8_t>& rgba) const
 {
     rgba.resize(std::size_t(m_width) * std::size_t(m_height) * 4);

@@ -131,6 +131,21 @@ public:
     void flushHud();
 
     /**
+     * @brief 路面に貼るメッシュ（タイヤ痕など）を描く
+     * @details 路面と同じ高さでもちらつかないよう、少しだけ手前にずらして描く。
+     * @param mesh 描くメッシュ
+     */
+    void drawDecal(const GpuMesh& mesh);
+
+    /**
+     * @brief 転送済みのメッシュの中身を入れ替える
+     * @details 毎フレーム形が変わるメッシュに使う。まだ転送していなければ新しく作る。
+     * @param gpu 入れ替える先
+     * @param mesh 新しい中身
+     */
+    void update(GpuMesh& gpu, const CpuMesh& mesh);
+
+    /**
      * @brief メッシュを GPU に転送する
      * @param mesh 転送するメッシュ
      * @return 転送したメッシュ
