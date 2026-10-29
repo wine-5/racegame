@@ -8,6 +8,9 @@
 namespace domain
 {
 
+/**
+ * @brief コース上のある点についての問い合わせ結果
+ */
 struct TrackPose
 {
     bool found{};
@@ -23,6 +26,9 @@ struct TrackPose
     int nameId{-1};
 };
 
+/**
+ * @brief コースの中心線の 1 点
+ */
 struct TrackSample
 {
     float x{};
@@ -35,7 +41,10 @@ struct TrackSample
     bool bridge{};
 };
 
-// 鈴鹿サーキット。中心線は OSM、高さは国土地理院の標高。
+/**
+ * @brief コースのデータと位置の問い合わせ
+ * @details 鈴鹿サーキット。中心線は OSM、高さは国土地理院の標高。
+ */
 struct Track
 {
     float originLat{};
@@ -52,11 +61,32 @@ struct Track
     std::vector<std::string> names;
     std::vector<Vec3> pit;  // ピットレーンの中心線。走行には使わない
 
-    // samples を埋めたあとに呼ぶ。周回距離 s と全長を計算する。点が足りなければ false。
+    /**
+     * @brief 周回距離と全長を計算する
+     * @details samples を埋めたあとに呼ぶ。
+     * @return 点が足りなければ false
+     */
     bool finalize();
-    // preferS が 0 以上のときは、その周回位置に近い路面を優先する。立体交差で上下を取り違えない。
+
+    /**
+     * @brief 指定した位置にいちばん近い路面を探す
+     * @details preferS が 0 以上のときは、その周回位置に近い路面を優先する。立体交差で上下を取り違えない。
+     * @param x 位置の x
+     * @param z 位置の z
+     * @param yHint 位置の高さ。立体交差で上下を選ぶのに使う
+     * @param preferS 優先する周回位置。負なら使わない
+     * @return 見つかった路面の情報。見つからなければ found が false
+     */
     TrackPose query(float x, float z, float yHint, float preferS = -1.0f) const;
+
+    /// 中心線から壁までの横方向の距離
     float wallLateral() const { return halfWidth + curbWidth + runoff; }
+
+    /**
+     * @brief コーナー名を取得する
+     * @param nameId 名前の番号
+     * @return コーナー名。番号が範囲外なら空文字列
+     */
     const char* nameOf(int nameId) const;
 };
 

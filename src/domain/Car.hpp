@@ -5,6 +5,9 @@
 namespace domain
 {
 
+/**
+ * @brief 運転の入力。キーボード・パッド・自動運転のどれからでも作れる
+ */
 struct DriveInput
 {
     float throttle{};  // 0..1
@@ -12,6 +15,9 @@ struct DriveInput
     float steer{};     // -1..1  左が負、右が正
 };
 
+/**
+ * @brief 車の状態と物理
+ */
 struct Car
 {
     float x{};
@@ -25,10 +31,26 @@ struct Car
     bool onAsphalt{true};
     TrackPose ground;
 
+    /**
+     * @brief スタート位置に戻して止める
+     * @param track 走るコース
+     */
     void reset(const Track& track);
+
+    /**
+     * @brief 1 ステップ進める
+     * @details ステアリング、アクセル・ブレーキ、移動、壁との接触、路面の高さを順に処理する。
+     * @param dt 進める時間（秒）
+     * @param input 運転の入力
+     * @param track 走るコース
+     */
     void update(float dt, const DriveInput& input, const Track& track);
 
-    // グリップしたまま進む。ドリフトの課題ではこの関数を差し替える。
+    /**
+     * @brief グリップしたまま進む
+     * @details 横滑りはしない。ドリフトの課題ではこの関数を差し替える。
+     * @param dt 進める時間（秒）
+     */
     void stepGrip(float dt);
 };
 
