@@ -2,6 +2,7 @@
 
 #include "adapters/gl/ChaseCamera.hpp"
 #include "adapters/gl/Renderer.hpp"
+#include "adapters/gl/TireSmoke.hpp"
 #include "application/GameSession.hpp"
 
 #include <cstdint>
@@ -34,8 +35,12 @@ public:
      */
     void render(const application::GameSession& session, float dt, int width, int height);
 
-    /// カメラを補間せずに車の後ろへ戻す。リセットのあとに呼ぶ
-    void snapCamera() { m_camera.snap(); }
+    /// カメラを補間せずに車の後ろへ戻し、煙などの演出を消す。リセットのあとに呼ぶ
+    void snapCamera()
+    {
+        m_camera.snap();
+        m_smoke.clear();
+    }
 
     /// カメラのモードを切り替える
     void cycleCamera() { m_camera.cycleMode(); }
@@ -61,6 +66,8 @@ private:
     GpuMesh m_wheel;
     GpuMesh m_shadow;
     ChaseCamera m_camera;
+    TireSmoke m_smoke;
+    std::vector<Billboard> m_billboards;
     bool m_showHelp{true};
 };
 

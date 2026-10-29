@@ -10,9 +10,11 @@ namespace adapters::gl
 {
 
 using domain::Car;
+using domain::cross;
 using domain::lookAt;
 using domain::Mat4;
 using domain::mul;
+using domain::normalize;
 using domain::perspective;
 using domain::rotationX;
 using domain::rotationY;
@@ -66,6 +68,7 @@ bool GameView::init(const Track& track)
 void GameView::render(const application::GameSession& session, float dt, int width, int height)
 {
     m_camera.update(session.car(), session.track(), dt);
+    m_smoke.update(session.car(), dt, !session.paused());
 
     m_renderer.resize(width, height);
     m_renderer.clearFrame();
@@ -79,6 +82,14 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     Mat4 identity;
     m_renderer.draw(m_course, identity);
     drawCar(session.car(), session.track());
+
+    // 半透明のものは不透明なものをすべて描いてから
+    Vec3 viewDir{normalize(m_camera.look() - m_camera.eye())};
+    Vec3 cameraRight{normalize(cross(viewDir, Vec3{0, 1, 0}))};
+    Vec3 cameraUp{cross(cameraRight, viewDir)};
+    m_billboards.clear();
+    m_smoke.collect(m_billboards);
+    m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
 
     drawHud(m_renderer, session, m_camera, m_showHelp);
 }
