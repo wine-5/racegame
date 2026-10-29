@@ -108,4 +108,11 @@ void GameView::drawCar(const Car& car, const Track& track)
     }
 }
 
+void GameView::readPixels(std::vector<std::uint8_t>& rgba, int& width, int& height) const
+{
+    m_renderer.readPixels(rgba);
+    width = m_renderer.width();
+    height = m_renderer.height();
+}
+
 }  // namespace adapters::gl

@@ -3,6 +3,7 @@
 #include "adapters/gl/CpuMesh.hpp"
 #include "domain/Geom.hpp"
 
+#include <cstdint>
 #include <vector>
 
 namespace adapters::gl
@@ -112,6 +113,13 @@ public:
      * @return 転送したメッシュ
      */
     GpuMesh upload(const CpuMesh& mesh);
+
+    /**
+     * @brief 描画した画面を読み出す
+     * @details 下の行から順に並ぶ（OpenGL の向き）。
+     * @param rgba 読み出し先。幅 × 高さ × 4 バイトになる
+     */
+    void readPixels(std::vector<std::uint8_t>& rgba) const;
 
     /// 描画先の幅（ピクセル）
     int width() const { return m_width; }

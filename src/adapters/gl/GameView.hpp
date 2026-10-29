@@ -4,6 +4,9 @@
 #include "adapters/gl/Renderer.hpp"
 #include "application/GameSession.hpp"
 
+#include <cstdint>
+#include <vector>
+
 namespace adapters::gl
 {
 
@@ -39,6 +42,14 @@ public:
 
     /// 操作説明の表示を切り替える
     void toggleHelp() { m_showHelp = !m_showHelp; }
+
+    /**
+     * @brief 最後に描いた画面を読み出す
+     * @param rgba 読み出し先。下の行から順に並ぶ
+     * @param width 幅（ピクセル）を受け取る
+     * @param height 高さ（ピクセル）を受け取る
+     */
+    void readPixels(std::vector<std::uint8_t>& rgba, int& width, int& height) const;
 
 private:
     /// 車と影とタイヤを描く

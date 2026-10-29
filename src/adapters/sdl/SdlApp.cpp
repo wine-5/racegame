@@ -3,7 +3,10 @@
 #include <SDL_image.h>
 #include <SDL_mixer.h>
 
+#include <algorithm>
+#include <cstdint>
 #include <cstdio>
+#include <vector>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -20,6 +23,23 @@ constexpr int WINDOW_WIDTH = 1280;
 constexpr int WINDOW_HEIGHT = 720;
 // ネイティブでフレームを回すときの最短間隔（ミリ秒）
 constexpr double NATIVE_FRAME_MS = 14.0;
+
+// 画面を保存するときの決まった操作。スタート直後の直線で加速し、右へ振ってドリフトに入る
+domain::DriveInput captureDrive(int frame)
+{
+    domain::DriveInput drive;
+    drive.throttle = 1;
+    if (frame >= 150 && frame < 165)
+    {
+        drive.steer = 1;
+        drive.handbrake = true;
+    }
+    else if (frame >= 165)
+    {
+        drive.steer = 0.5f;
+    }
+    return drive;
+}
 
 }  // namespace
 
@@ -167,6 +187,15 @@ void SdlApp::frame()
     Uint64 now{SDL_GetPerformanceCounter()};
     double elapsed{double(now - m_prevCounter) / double(SDL_GetPerformanceFrequency())};
     m_prevCounter = now;
+    bool capturing{!m_capture.path.empty()};
+    if (capturing)
+    {
+        elapsed = 1.0 / 60.0;
+        if (m_capture.autoDrive)
+        {
+            input.drive = captureDrive(m_frameCount);
+        }
+    }
     if (elapsed > MAX_FRAME_SEC)
     {
         elapsed = MAX_FRAME_SEC;
@@ -182,7 +211,43 @@ void SdlApp::frame()
     int drawableH{};
     SDL_GL_GetDrawableSize(m_window, &drawableW, &drawableH);
     m_view.render(m_session, float(elapsed), drawableW, drawableH);
+    if (capturing && m_frameCount >= m_capture.frame)
+    {
+        saveCapture();
+        m_running = false;
+    }
     SDL_GL_SwapWindow(m_window);
+    ++m_frameCount;
+}
+
+void SdlApp::saveCapture()
+{
+    std::vector<std::uint8_t> rgba;
+    int width{};
+    int height{};
+    m_view.readPixels(rgba, width, height);
+    SDL_Surface* surface{SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_ABGR8888)};
+    if (!surface)
+    {
+        SDL_Log("SDL_CreateRGBSurfaceWithFormat failed: %s", SDL_GetError());
+        return;
+    }
+    // OpenGL は下の行から並ぶので、上下を入れ替えて書き込む
+    for (int row{}; row < height; ++row)
+    {
+        const std::uint8_t* src{rgba.data() + std::size_t(height - 1 - row) * std::size_t(width) * 4};
+        std::uint8_t* dst{static_cast<std::uint8_t*>(surface->pixels) + std::size_t(row) * std::size_t(surface->pitch)};
+        std::copy(src, src + std::size_t(width) * 4, dst);
+    }
+    if (IMG_SavePNG(surface, m_capture.path.c_str()) != 0)
+    {
+        SDL_Log("IMG_SavePNG failed: %s", IMG_GetError());
+    }
+    else
+    {
+        SDL_Log("saved %s", m_capture.path.c_str());
+    }
+    SDL_FreeSurface(surface);
 }
 
 }  // namespace adapters::sdl

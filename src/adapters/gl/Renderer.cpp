@@ -406,4 +406,11 @@ GpuMesh Renderer::upload(const CpuMesh& mesh)
     return gpu;
 }
 
+void Renderer::readPixels(std::vector<std::uint8_t>& rgba) const
+{
+    rgba.resize(std::size_t(m_width) * std::size_t(m_height) * 4);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, m_width, m_height, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+}
+
 }  // namespace adapters::gl
