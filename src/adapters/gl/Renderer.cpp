@@ -2,6 +2,7 @@
 
 #include <SDL.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -109,6 +110,38 @@ void main() {
 }
 )GLSL";
 
+const char* PARTICLE_VS = R"GLSL(
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec2 aUv;
+layout(location = 2) in vec4 aColor;
+uniform mat4 uViewProj;
+out vec2 vUv;
+out vec4 vColor;
+out vec3 vWorld;
+void main() {
+    vUv = aUv;
+    vColor = aColor;
+    vWorld = aPos;
+    gl_Position = uViewProj * vec4(aPos, 1.0);
+}
+)GLSL";
+
+const char* PARTICLE_FS = R"GLSL(
+in vec2 vUv;
+in vec4 vColor;
+in vec3 vWorld;
+uniform vec3 uCamPos;
+out vec4 fragColor;
+void main() {
+    // 中心が濃く、縁にいくほど薄い丸
+    float edge = 1.0 - smoothstep(0.2, 1.0, length(vUv));
+    float dist = distance(vWorld, uCamPos);
+    float fog = clamp((dist - 90.0) / 1500.0, 0.0, 1.0);
+    vec3 haze = vec3(0.62, 0.74, 0.84);
+    fragColor = vec4(mix(vColor.rgb, haze, fog), vColor.a * edge);
+}
+)GLSL";
+
 // 5x7。bit4 が左端。並びは 0-9 A-Z . : - / %
 constexpr char GLYPH_ORDER[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.:-/%";
 const std::uint8_t FONT[][7] = {
@@ -202,7 +235,8 @@ bool Renderer::init()
     m_worldProgram = linkProgram(WORLD_VS, WORLD_FS);
     m_skyProgram = linkProgram(SKY_VS, SKY_FS);
     m_hudProgram = linkProgram(HUD_VS, HUD_FS);
-    if (!m_worldProgram || !m_skyProgram || !m_hudProgram)
+    m_particleProgram = linkProgram(PARTICLE_VS, PARTICLE_FS);
+    if (!m_worldProgram || !m_skyProgram || !m_hudProgram || !m_particleProgram)
     {
         return false;
     }
@@ -210,6 +244,22 @@ bool Renderer::init()
     m_uModel = glGetUniformLocation(m_worldProgram, "uModel");
     m_uCamPos = glGetUniformLocation(m_worldProgram, "uCamPos");
     m_uOrtho = glGetUniformLocation(m_hudProgram, "uOrtho");
+    m_uParticleViewProj = glGetUniformLocation(m_particleProgram, "uViewProj");
+    m_uParticleCamPos = glGetUniformLocation(m_particleProgram, "uCamPos");
+
+    // 板 1 枚は 4 頂点。頂点は xyz + uv + rgba
+    glGenVertexArrays(1, &m_particleVao);
+    glGenBuffers(1, &m_particleVbo);
+    glGenBuffers(1, &m_particleIbo);
+    glBindVertexArray(m_particleVao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_particleVbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_particleIbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), reinterpret_cast<void*>(0));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(float), reinterpret_cast<void*>(5 * sizeof(float)));
 
     glGenVertexArrays(1, &m_hudVao);
     glGenBuffers(1, &m_hudVbo);
@@ -262,6 +312,56 @@ void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
     glUseProgram(m_worldProgram);
     glUniformMatrix4fv(m_uViewProj, 1, GL_FALSE, viewProj.m);
     glUniform3f(m_uCamPos, cameraPos.x, cameraPos.y, cameraPos.z);
+    m_viewProj = viewProj;
+    m_cameraPos = cameraPos;
+}
+
+void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, Vec3 cameraUp)
+{
+    if (items.empty())
+    {
+        return;
+    }
+    // 半透明は奥から描かないと、手前の板が奥の板を隠してしまう
+    Vec3 eye{m_cameraPos};
+    std::sort(items.begin(), items.end(), [eye](const Billboard& a, const Billboard& b)
+              { return dot(a.position - eye, a.position - eye) > dot(b.position - eye, b.position - eye); });
+
+    m_particleVerts.clear();
+    m_particleIndices.clear();
+    const float corners[4][2]{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+    for (const Billboard& item : items)
+    {
+        unsigned base{static_cast<unsigned>(m_particleVerts.size() / 9)};
+        float half{item.size * 0.5f};
+        for (const auto& corner : corners)
+        {
+            Vec3 p{item.position + cameraRight * (corner[0] * half) + cameraUp * (corner[1] * half)};
+            float verts[]{p.x, p.y, p.z, corner[0], corner[1], item.r, item.g, item.b, item.a};
+            m_particleVerts.insert(m_particleVerts.end(), verts, verts + 9);
+        }
+        unsigned idx[]{base, base + 1, base + 2, base, base + 2, base + 3};
+        m_particleIndices.insert(m_particleIndices.end(), idx, idx + 6);
+    }
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+    glUseProgram(m_particleProgram);
+    glUniformMatrix4fv(m_uParticleViewProj, 1, GL_FALSE, m_viewProj.m);
+    glUniform3f(m_uParticleCamPos, m_cameraPos.x, m_cameraPos.y, m_cameraPos.z);
+    glBindVertexArray(m_particleVao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_particleVbo);
+    glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(m_particleVerts.size() * sizeof(float)), m_particleVerts.data(),
+                 GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_particleIbo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, GLsizeiptr(m_particleIndices.size() * sizeof(unsigned)),
+                 m_particleIndices.data(), GL_DYNAMIC_DRAW);
+    glDrawElements(GL_TRIANGLES, GLsizei(m_particleIndices.size()), GL_UNSIGNED_INT, nullptr);
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+    // 次の draw のためにワールドのシェーダーへ戻す
+    glUseProgram(m_worldProgram);
 }
 
 void Renderer::draw(const GpuMesh& mesh, const Mat4& model)

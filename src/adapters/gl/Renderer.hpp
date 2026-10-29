@@ -21,6 +21,19 @@ struct GpuMesh
 };
 
 /**
+ * @brief カメラの方を向く半透明の板（煙などのパーティクル）
+ */
+struct Billboard
+{
+    domain::Vec3 position;
+    float size{1.0f};  // 一辺の長さ（m）
+    float r{1.0f};
+    float g{1.0f};
+    float b{1.0f};
+    float a{1.0f};  // 不透明度
+};
+
+/**
  * @brief OpenGL の描画。空・3D のワールド・2D の HUD を描く
  */
 class Renderer
@@ -59,6 +72,16 @@ public:
      * @param model モデル行列
      */
     void draw(const GpuMesh& mesh, const domain::Mat4& model);
+
+    /**
+     * @brief 半透明の板をまとめて描く
+     * @details beginWorld のあと、不透明なものをすべて描いてから呼ぶ。奥から順に並べ替えて描く。
+     *          板は丸くぼかして描くので、煙や埃に使える。
+     * @param items 描く板。並べ替えるので書き換わる
+     * @param cameraRight カメラの右方向
+     * @param cameraUp カメラの上方向
+     */
+    void drawBillboards(std::vector<Billboard>& items, domain::Vec3 cameraRight, domain::Vec3 cameraUp);
 
     /// HUD の描画を始める。以降の addQuad / drawLine / drawText は flushHud でまとめて描く
     void beginHud();
@@ -141,6 +164,16 @@ private:
     int m_uModel{-1};
     int m_uCamPos{-1};
     int m_uOrtho{-1};
+    unsigned m_particleProgram{};
+    unsigned m_particleVao{};
+    unsigned m_particleVbo{};
+    unsigned m_particleIbo{};
+    int m_uParticleViewProj{-1};
+    int m_uParticleCamPos{-1};
+    domain::Mat4 m_viewProj;
+    domain::Vec3 m_cameraPos;
+    std::vector<float> m_particleVerts;
+    std::vector<unsigned> m_particleIndices;
     std::vector<float> m_hudVerts;
     std::vector<unsigned> m_hudIndices;
 };
