@@ -88,7 +88,7 @@ float curvatureAhead(const Track& track, float s, float from, float to)
 
 }  // namespace
 
-DriveInput OneButtonDriver::drive(const Car& car, const Track& track, bool driftButton, float dt)
+DriveInput OneButtonDriver::drive(const Car& car, const Track& track, bool driftButton, float dt, float lineOffset)
 {
     DriveInput input;
     if (track.samples.size() < 3)
@@ -98,12 +98,18 @@ DriveInput OneButtonDriver::drive(const Car& car, const Track& track, bool drift
     TrackPose pose{track.query(car.x, car.z, car.y, car.ground.found ? car.ground.s : -1.0f)};
     float speed{std::fmax(car.speed, 0.0f)};
 
-    // ---- ステア: 進む向き（車体の向き＋滑り角）を、少し先の中心線へ向ける ----
+    // ---- ステア: 進む向き（車体の向き＋滑り角）を、少し先の中心線（から lineOffset ずらした点）へ向ける ----
     const bool drifting{driftButton && speed > KICK_MIN_SPEED};
     float lookahead{clampf(8.0f + 0.6f * speed, 10.0f, 32.0f) * (drifting ? DRIFT_LOOK_SCALE : 1.0f)};
     float tx{};
     float tz{};
     pointAt(track, pose.s + lookahead, tx, tz);
+    if (lineOffset != 0.0f)
+    {
+        float heading{headingAt(track, pose.s + lookahead)};
+        tx += std::cos(heading) * lineOffset;
+        tz -= std::sin(heading) * lineOffset;
+    }
     float travel{car.yaw + car.slipAngle()};
     float alpha{wrapPi(std::atan2(tx - car.x, tz - car.z) - travel)};
     float curvature{2.0f * std::sin(alpha) / lookahead};

@@ -21,9 +21,11 @@ public:
      * @param track 走っているコース
      * @param driftButton ドリフトのボタンを押しているか
      * @param dt 1 ステップの時間（秒）
+     * @param lineOffset 走るライン。中心線から右へずらす距離（m）
      * @return 車に渡す入力
      */
-    domain::DriveInput drive(const domain::Car& car, const domain::Track& track, bool driftButton, float dt);
+    domain::DriveInput drive(const domain::Car& car, const domain::Track& track, bool driftButton, float dt,
+                             float lineOffset = 0.0f);
 
     /// 前の状態を忘れる。リセットのあとに呼ぶ
     void reset() { *this = OneButtonDriver{}; }
