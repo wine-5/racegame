@@ -71,6 +71,7 @@ add_executable(racegame
     src/adapters/sdl/SdlApp.cpp
     src/adapters/sdl/SdlAudio.cpp
     src/adapters/sdl/SdlInput.cpp
+    src/adapters/sdl/PadRumble.cpp
 )
 target_link_libraries(racegame PRIVATE racecore)
 

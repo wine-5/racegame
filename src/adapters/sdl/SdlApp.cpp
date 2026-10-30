@@ -177,6 +177,7 @@ void SdlApp::showTitle()
     {
         m_session.togglePause();
     }
+    m_rumble.reset();
     loadStage(m_stageIndex);
 }
 
@@ -279,6 +280,7 @@ void SdlApp::frame()
         m_session.reset();
         m_view.snapCamera();
         m_driftSound.reset();
+        m_rumble.reset();
     }
 
     Uint64 now{SDL_GetPerformanceCounter()};
@@ -316,6 +318,10 @@ void SdlApp::frame()
     m_driftSound.update(m_session.car(), m_session.drift(), m_session.lastInput().throttle, float(elapsed),
                         m_session.paused());
     m_driftSound.updateWorld(m_session.lamps(), m_session.props());
+    if (m_screen == Screen::Playing && !capturing)
+    {
+        m_rumble.update(m_session, float(elapsed));
+    }
 
     fitCanvas();
     int drawableW{};

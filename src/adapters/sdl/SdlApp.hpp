@@ -4,6 +4,7 @@
 #include "adapters/audio/DriftSound.hpp"
 #include "adapters/gl/GameView.hpp"
 #include "adapters/gl/Scenery.hpp"
+#include "adapters/sdl/PadRumble.hpp"
 #include "adapters/sdl/SdlAudio.hpp"
 #include "adapters/sdl/SdlInput.hpp"
 #include "application/GameSession.hpp"
@@ -118,6 +119,7 @@ private:
     std::vector<Stage> m_stages;
     int m_stageIndex{};
     SdlInput m_input;
+    PadRumble m_rumble{m_input};
     audio::AudioMixer m_mixer;
     audio::DriftSound m_driftSound{m_mixer};
     SdlAudio m_audio{m_mixer};
