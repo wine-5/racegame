@@ -28,6 +28,13 @@ public:
     void clear();
 
     /**
+     * @brief 路面の色を決める
+     * @details 古い跡はこの色に近づいて消えていく。
+     * @param color 路面の色
+     */
+    void setRoadColor(domain::Vec3 color) { m_roadColor = color; }
+
+    /**
      * @brief 跡のメッシュを作る
      * @param mesh 作り先
      */
@@ -52,6 +59,7 @@ private:
     };
 
     std::deque<Segment> m_segments;
+    domain::Vec3 m_roadColor{0.17f, 0.17f, 0.19f};
     Wheel m_wheels[2];
 };
 

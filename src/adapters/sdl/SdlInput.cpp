@@ -1,6 +1,5 @@
 #include "adapters/sdl/SdlInput.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <cstring>
 
@@ -11,49 +10,49 @@
 namespace adapters::sdl
 {
 
-using domain::clampf;
-using domain::DriveInput;
-
 namespace
 {
 
+/// 押した瞬間だけ立てたいボタン
 struct PadPulse
 {
-    bool reset{false};
-    bool pause{false};
-    bool camera{false};
+    bool reset{};
+    bool pause{};
+    bool camera{};
 };
 
-float stickDead(float value)
+constexpr float STICK_DEADZONE = 0.15f;  // スティックの遊び。これより小さい傾きは 0 にする
+
+/// スティックの傾き（-1..1）から遊びを取り除く
+float applyDeadzone(float value)
 {
-    const float dead{0.14f};
-    if (std::fabs(value) < dead)
+    if (std::fabs(value) < STICK_DEADZONE)
     {
-        return 0;
+        return 0.0f;
     }
-    float sign{value > 0 ? 1.0f : -1.0f};
-    return (value - sign * dead) / (1.0f - dead);
+    return (value - std::copysign(STICK_DEADZONE, value)) / (1.0f - STICK_DEADZONE);
 }
 
-#ifndef __EMSCRIPTEN__
-float stickAxis(SDL_GameController* pad, SDL_GameControllerAxis axis)
+/// パッドの入力を、キーボードの入力に重ねる。強い方を使う
+void mergePad(InputFrame& frame, float steer, float throttle, float brake, bool drift)
 {
-    return stickDead(SDL_GameControllerGetAxis(pad, axis) / 32767.0f);
+    steer = applyDeadzone(steer);
+    if (std::fabs(steer) > std::fabs(frame.steer))
+    {
+        frame.steer = steer;
+    }
+    frame.throttle = std::fmax(frame.throttle, throttle);
+    frame.brake = std::fmax(frame.brake, brake);
+    frame.drift = frame.drift || drift;
 }
-#endif
 
 #ifdef __EMSCRIPTEN__
-// ブラウザの Gamepad API は 0 が離した状態、1 が押し込み。古いパッドは -1..1 で、離すと -1。
-float triggerLevel(float value)
-{
-    if (value < 0)
-    {
-        value = (value + 1.0f) * 0.5f;
-    }
-    return value < 0.04f ? 0.0f : clampf(value, 0.0f, 1.0f);
-}
-
-PadPulse readBrowserPad(DriveInput& input)
+/**
+ * ブラウザのゲームパッドを Gamepad API から読む。SDL はブラウザのパッドを
+ * ゲームコントローラと認識しないことが多いため。標準の並びで、左スティック（軸 0）でステア、
+ * RT（7）でアクセル、LT（6）でブレーキ、A（0）でドリフト。
+ */
+PadPulse readBrowserPad(InputFrame& frame)
 {
     PadPulse pulse;
     static bool prevCamera{false};
@@ -75,42 +74,14 @@ PadPulse readBrowserPad(DriveInput& input)
         {
             continue;
         }
-        auto axis = [&](int index) { return index < pad.numAxes ? static_cast<float>(pad.axis[index]) : 0.0f; };
+        auto held = [&](int index) { return index < pad.numButtons && pad.digitalButton[index]; };
         auto analog = [&](int index)
         { return index < pad.numButtons ? static_cast<float>(pad.analogButton[index]) : 0.0f; };
-        auto held = [&](int index) { return index < pad.numButtons && pad.digitalButton[index]; };
-        const bool standard{std::strcmp(pad.mapping, "standard") == 0 || (pad.numButtons >= 16 && pad.numAxes >= 2)};
-        input.steer += stickDead(axis(0));
-        if (standard)
-        {
-            input.steer += stickDead(axis(2));
-            if (held(14))
-                input.steer -= 1;
-            if (held(15))
-                input.steer += 1;
-            if (held(12))
-                input.throttle = 1;
-            if (held(13))
-                input.brake = 1;
-            if (held(0))
-                input.handbrake = true;
-            float throttle{analog(7)};
-            float brake{analog(6)};
-            if (throttle < 0.01f && pad.numAxes > 5)
-                throttle = triggerLevel(axis(5));
-            if (brake < 0.01f && pad.numAxes > 4)
-                brake = triggerLevel(axis(4));
-            input.throttle = std::max(input.throttle, throttle);
-            input.brake = std::max(input.brake, brake);
-            camera = camera || held(3);
-            reset = reset || held(8);
-            pause = pause || held(9);
-        }
-        else if (pad.numAxes >= 6)
-        {
-            input.throttle = std::max(input.throttle, triggerLevel(axis(5)));
-            input.brake = std::max(input.brake, triggerLevel(axis(4)));
-        }
+        float stick{pad.numAxes > 0 ? static_cast<float>(pad.axis[0]) : 0.0f};
+        mergePad(frame, stick, analog(7), analog(6), held(0));
+        camera = camera || held(3);
+        reset = reset || held(8);
+        pause = pause || held(9);
     }
     pulse.camera = camera && !prevCamera;
     pulse.reset = reset && !prevReset;
@@ -122,61 +93,33 @@ PadPulse readBrowserPad(DriveInput& input)
 }
 #endif
 
-DriveInput readDrive(SDL_GameController* pad, PadPulse& pulse)
+/// 運転の操作を読む。キーボードは W / S / A / D と矢印キー、Space、マウスの左ボタン
+void readDriving(SDL_GameController* pad, PadPulse& pulse, InputFrame& frame)
 {
     const Uint8* keys{SDL_GetKeyboardState(nullptr)};
-    DriveInput input;
-    if (keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP])
-        input.throttle = 1;
-    if (keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN])
-        input.brake = 1;
-    if (keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT])
-        input.steer -= 1;
-    if (keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT])
-        input.steer += 1;
-    if (keys[SDL_SCANCODE_SPACE])
-        input.handbrake = true;
+    auto down = [&](SDL_Scancode a, SDL_Scancode b) { return keys[a] != 0 || keys[b] != 0; };
+    frame.throttle = down(SDL_SCANCODE_W, SDL_SCANCODE_UP) ? 1.0f : 0.0f;
+    frame.brake = down(SDL_SCANCODE_S, SDL_SCANCODE_DOWN) ? 1.0f : 0.0f;
+    frame.steer = (down(SDL_SCANCODE_D, SDL_SCANCODE_RIGHT) ? 1.0f : 0.0f) -
+                  (down(SDL_SCANCODE_A, SDL_SCANCODE_LEFT) ? 1.0f : 0.0f);
+    frame.drift = keys[SDL_SCANCODE_SPACE] != 0;
+    frame.drift = frame.drift || (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK) != 0;
 #ifndef __EMSCRIPTEN__
     if (pad)
     {
-        float throttle{stickAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT)};
-        float brake{stickAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERLEFT)};
-        if (throttle < 0)
-            throttle = 0;
-        if (brake < 0)
-            brake = 0;
-        input.throttle = std::max(input.throttle, throttle);
-        input.brake = std::max(input.brake, brake);
-        input.steer += stickAxis(pad, SDL_CONTROLLER_AXIS_LEFTX);
-        input.steer += stickAxis(pad, SDL_CONTROLLER_AXIS_RIGHTX);
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_UP))
-            input.throttle = 1;
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
-            input.brake = 1;
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
-            input.steer -= 1;
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
-            input.steer += 1;
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_A))
-            input.handbrake = true;
+        auto axis = [&](SDL_GameControllerAxis which)
+        { return static_cast<float>(SDL_GameControllerGetAxis(pad, which)) / 32767.0f; };
+        mergePad(frame, axis(SDL_CONTROLLER_AXIS_LEFTX), axis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT),
+                 axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT), SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_A) != 0);
     }
+    (void)pulse;
 #else
     (void)pad;
-#endif
-#ifdef __EMSCRIPTEN__
-    // SDL はブラウザのパッドをゲームコントローラと認識しないことが多い。
-    // 標準マッピングを Gamepad API から直接読む。
-    PadPulse browser{readBrowserPad(input)};
+    PadPulse browser{readBrowserPad(frame)};
     pulse.camera = pulse.camera || browser.camera;
     pulse.reset = pulse.reset || browser.reset;
     pulse.pause = pulse.pause || browser.pause;
-#else
-    (void)pulse;
 #endif
-    input.throttle = clampf(input.throttle, 0, 1);
-    input.brake = clampf(input.brake, 0, 1);
-    input.steer = clampf(input.steer, -1, 1);
-    return input;
 }
 
 }  // namespace
@@ -229,7 +172,7 @@ InputFrame SdlInput::poll()
         {
             SDL_Scancode code{event.key.keysym.scancode};
             if (code == SDL_SCANCODE_ESCAPE)
-                frame.quit = true;
+                frame.back = true;
             else if (code == SDL_SCANCODE_R)
                 frame.reset = true;
             else if (code == SDL_SCANCODE_C)
@@ -238,6 +181,10 @@ InputFrame SdlInput::poll()
                 frame.pause = true;
             else if (code == SDL_SCANCODE_H)
                 frame.help = true;
+            else if (code == SDL_SCANCODE_F)
+                frame.fullscreen = true;
+            else if (code >= SDL_SCANCODE_1 && code <= SDL_SCANCODE_9)
+                frame.stage = code - SDL_SCANCODE_1;
         }
         else if (event.type == SDL_CONTROLLERDEVICEADDED)
         {
@@ -259,7 +206,7 @@ InputFrame SdlInput::poll()
         }
     }
     PadPulse padPulse;
-    frame.drive = readDrive(m_pad, padPulse);
+    readDriving(m_pad, padPulse, frame);
     frame.reset = frame.reset || padPulse.reset;
     frame.pause = frame.pause || padPulse.pause;
     frame.camera = frame.camera || padPulse.camera;

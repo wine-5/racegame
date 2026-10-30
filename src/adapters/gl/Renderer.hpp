@@ -21,6 +21,47 @@ struct GpuMesh
 };
 
 /**
+ * @brief 光の当たり方と空の色
+ * @details 既定値は昼のサーキット。
+ */
+struct Lighting
+{
+    domain::Vec3 sunDir{0.35f, 0.86f, 0.28f};  // 太陽（夜は月）の方向
+    domain::Vec3 sunColor{0.64f, 0.64f, 0.64f};
+    domain::Vec3 ambient{0.36f, 0.36f, 0.36f};  // どの向きの面にも当たる光
+    domain::Vec3 fogColor{0.62f, 0.74f, 0.84f};
+    float fogStart{90.0f};    // 霧が始まる距離（m）
+    float fogRange{1500.0f};  // 霧が濃くなりきるまでの距離（m）
+    domain::Vec3 skyHorizon{0.62f, 0.74f, 0.84f};
+    domain::Vec3 skyZenith{0.28f, 0.48f, 0.78f};
+};
+
+/**
+ * @brief 点の光（街灯・車のライトなど）
+ * @details 光は距離に応じて弱まり、radius で 0 になる。
+ */
+struct PointLight
+{
+    domain::Vec3 position;
+    domain::Vec3 color{1.0f, 1.0f, 1.0f};
+    float radius{10.0f};  // 光が届く距離（m）
+};
+
+/// 一度に当てられる点の光の数
+constexpr int MAX_POINT_LIGHTS = 24;
+
+/**
+ * @brief 自分で光る色にする
+ * @details 色の値が 1 を超える頂点は、光の当たり方に関係なくその色で光る（シェーダーの決まり）。
+ * @param color 光る色（0..1）
+ * @return メッシュに渡す色
+ */
+inline domain::Vec3 glow(domain::Vec3 color)
+{
+    return color + domain::Vec3{1.0f, 1.0f, 1.0f};
+}
+
+/**
  * @brief カメラの方を向く半透明の板（煙などのパーティクル）
  */
 struct Billboard
@@ -53,6 +94,19 @@ public:
      */
     void resize(int width, int height);
 
+    /**
+     * @brief 光の当たり方と空の色を変える
+     * @param lighting 新しい設定
+     */
+    void setLighting(const Lighting& lighting) { m_lighting = lighting; }
+
+    /**
+     * @brief 点の光を決める
+     * @details beginWorld より前に呼ぶ。MAX_POINT_LIGHTS を超えた分は使わない。
+     * @param lights 点の光
+     */
+    void setPointLights(const std::vector<PointLight>& lights);
+
     /// 画面を消す
     void clearFrame();
 
@@ -80,8 +134,10 @@ public:
      * @param items 描く板。並べ替えるので書き換わる
      * @param cameraRight カメラの右方向
      * @param cameraUp カメラの上方向
+     * @param glowing true なら光の当たり方に関係なく光り、重なるほど明るくなる（火花・光の尾）
      */
-    void drawBillboards(std::vector<Billboard>& items, domain::Vec3 cameraRight, domain::Vec3 cameraUp);
+    void drawBillboards(std::vector<Billboard>& items, domain::Vec3 cameraRight, domain::Vec3 cameraUp,
+                        bool glowing = false);
 
     /// HUD の描画を始める。以降の addQuad / drawLine / drawText は flushHud でまとめて描く
     void beginHud();
@@ -146,6 +202,12 @@ public:
     void update(GpuMesh& gpu, const CpuMesh& mesh);
 
     /**
+     * @brief 転送済みのメッシュを GPU から消す
+     * @param gpu 消すメッシュ。空に戻る
+     */
+    void release(GpuMesh& gpu);
+
+    /**
      * @brief メッシュを GPU に転送する
      * @param mesh 転送するメッシュ
      * @return 転送したメッシュ
@@ -179,6 +241,28 @@ private:
     int m_uModel{-1};
     int m_uCamPos{-1};
     int m_uOrtho{-1};
+    int m_uSunDir{-1};
+    int m_uSunColor{-1};
+    int m_uAmbient{-1};
+    int m_uFogColor{-1};
+    int m_uFog{-1};
+    int m_uSkyHorizon{-1};
+    int m_uSkyZenith{-1};
+    int m_uParticleSunColor{-1};
+    int m_uParticleAmbient{-1};
+    int m_uParticleFogColor{-1};
+    int m_uParticleFog{-1};
+    int m_uParticleGlow{-1};
+    Lighting m_lighting;
+    int m_lightCount{};
+    float m_lightPos[MAX_POINT_LIGHTS * 4]{};
+    float m_lightColor[MAX_POINT_LIGHTS * 3]{};
+    int m_uLightCount{-1};
+    int m_uLightPos{-1};
+    int m_uLightColor{-1};
+    int m_uParticleLightCount{-1};
+    int m_uParticleLightPos{-1};
+    int m_uParticleLightColor{-1};
     unsigned m_particleProgram{};
     unsigned m_particleVao{};
     unsigned m_particleVbo{};

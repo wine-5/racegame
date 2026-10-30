@@ -1,5 +1,7 @@
 #include "adapters/gl/CarMesh.hpp"
 
+#include "adapters/gl/Renderer.hpp"
+
 #include <cmath>
 
 namespace adapters::gl
@@ -24,6 +26,18 @@ void buildCarBody(CpuMesh& mesh)
     mesh.addBox({-0.95f, 0.26f, 1.95f}, {0.95f, 0.36f, 2.35f}, carbon);
     mesh.addBox({-0.86f, 0.85f, -2.2f}, {0.86f, 1.0f, -1.85f}, carbon);
     mesh.addBox({-0.15f, 0.95f, -2.05f}, {0.15f, 1.15f, -1.9f}, carbon);
+    // ライト。自分で光る色なので、夜でもはっきり見える
+    for (float side{-1.0f}; side <= 1.0f; side += 2.0f)
+    {
+        float inner{side * 0.42f};
+        float outer{side * 0.64f};
+        mesh.addBox({std::fmin(inner, outer), 0.39f, 2.24f}, {std::fmax(inner, outer), 0.47f, 2.28f},
+                    glow({1.0f, 0.97f, 0.9f}));
+        float tailInner{side * 0.5f};
+        float tailOuter{side * 0.84f};
+        mesh.addBox({std::fmin(tailInner, tailOuter), 0.46f, -2.09f}, {std::fmax(tailInner, tailOuter), 0.58f, -2.04f},
+                    glow({1.0f, 0.06f, 0.04f}));
+    }
 }
 
 void buildCarWheel(CpuMesh& mesh)

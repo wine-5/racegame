@@ -2,8 +2,11 @@
 
 #include "adapters/gl/CarMesh.hpp"
 #include "adapters/gl/Hud.hpp"
+#include "adapters/gl/MultiplierColor.hpp"
+#include "adapters/gl/PropMesh.hpp"
 #include "adapters/gl/TrackMesh.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 namespace adapters::gl
@@ -27,6 +30,15 @@ namespace
 {
 
 constexpr float PI = 3.14159265f;
+constexpr float LIT_POWER = 1.6f;          // 灯した街灯の明るさ
+constexpr float LIT_RADIUS = 34.0f;        // 灯した街灯の光が届く距離（m）
+const Vec3 UNLIT_GLOW{1.0f, 0.62f, 0.3f};  // 消えている街灯の、ぼんやりした灯り
+
+/// 灯った直後に強く光って落ち着く。1 → 0
+float ignitionPulse(float litAge)
+{
+    return std::exp(-litAge * 3.0f);
+}
 
 // 車の前後 2.4m の路面の高さから、車体の前後の傾きを求める
 float carPitch(const Car& car, const Track& track)
@@ -44,31 +56,74 @@ float carPitch(const Car& car, const Track& track)
 
 }  // namespace
 
-bool GameView::init(const Track& track)
+bool GameView::init()
 {
-    if (!m_renderer.init())
+    if (!m_renderer.init() || !m_post.init())
     {
         return false;
     }
-    CpuMesh course;
     CpuMesh body;
     CpuMesh wheel;
     CpuMesh shadow;
-    buildTrackMesh(track, course);
     buildCarBody(body);
     buildCarWheel(wheel);
     buildCarShadow(shadow);
-    m_course = m_renderer.upload(course);
     m_body = m_renderer.upload(body);
     m_wheel = m_renderer.upload(wheel);
     m_shadow = m_renderer.upload(shadow);
+    CpuMesh cone;
+    CpuMesh drum;
+    buildConeMesh(cone);
+    buildDrumMesh(drum);
+    m_cone = m_renderer.upload(cone);
+    m_drum = m_renderer.upload(drum);
     return true;
 }
 
-void GameView::render(const application::GameSession& session, float dt, int width, int height)
+void GameView::loadStage(const Track& track, Scenery scenery)
 {
+    m_scenery = scenery;
+    CpuMesh course;
+    if (scenery == Scenery::Circuit)
+    {
+        buildTrackMesh(track, course);
+        m_lamps.clear();
+        m_fixtures.clear();
+        m_renderer.setLighting(Lighting{});
+        m_skidMarks.setRoadColor({0.17f, 0.17f, 0.19f});
+    }
+    else
+    {
+        buildPortScenery(track, course, m_lamps, m_fixtures);
+        m_renderer.setLighting(portLighting());
+        m_skidMarks.setRoadColor(portRoadColor());
+    }
+    m_renderer.release(m_course);
+    m_course = m_renderer.upload(course);
+    m_lampSpots.clear();
+    for (const LampFixture& fixture : m_fixtures)
+    {
+        m_lampSpots.push_back(fixture.s);
+    }
+    m_shownTier.assign(m_fixtures.size(), 0);
+    m_lastHits = 0;
+    m_lastSinceAllLit = 1e9f;
+    snapCamera();
+}
+
+void GameView::render(const application::GameSession& session, float dt, int width, int height,
+                      const TitleScreen* title)
+{
+    m_time += dt;
     m_camera.update(session.car(), session.track(), dt);
     m_smoke.update(session.car(), dt, !session.paused());
+    m_sparks.update(session.car(), session.drift(), dt, !session.paused());
+    m_trail.update(session.car(), dt, !session.paused());
+    react(session);
+    if (!session.paused())
+    {
+        m_bursts.update(dt);
+    }
     if (m_skidMarks.update(session.car(), !session.paused()) || m_skidMarksDirty)
     {
         m_skidMarks.build(m_skidMesh);
@@ -76,7 +131,9 @@ void GameView::render(const application::GameSession& session, float dt, int wid
         m_skidMarksDirty = false;
     }
 
+    chooseLights(session.car(), session.lamps());
     m_renderer.resize(width, height);
+    m_post.begin(width, height);
     m_renderer.clearFrame();
     m_renderer.drawSky();
 
@@ -89,6 +146,7 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_renderer.draw(m_course, identity);
     m_renderer.drawDecal(m_skidGpu);
     drawCar(session.car(), session.track());
+    drawProps(session.props());
 
     // 半透明のものは不透明なものをすべて描いてから
     Vec3 viewDir{normalize(m_camera.look() - m_camera.eye())};
@@ -97,8 +155,179 @@ void GameView::render(const application::GameSession& session, float dt, int wid
     m_billboards.clear();
     m_smoke.collect(m_billboards, m_camera.eye());
     m_renderer.drawBillboards(m_billboards, cameraRight, cameraUp);
+    m_glows.clear();
+    m_sparks.collect(m_glows);
+    m_trail.collect(m_glows);
+    m_bursts.collect(m_glows);
+    collectLampHalos(session.lamps(), m_glows);
+    m_renderer.drawBillboards(m_glows, cameraRight, cameraUp, true);
+    m_post.finish(feel(session, dt));
 
-    drawHud(m_renderer, session, m_camera, m_showHelp);
+    if (title)
+    {
+        drawTitle(m_renderer, *title, m_time);
+    }
+    else
+    {
+        drawHud(m_renderer, session, m_camera, m_showHelp, m_scenery == Scenery::Circuit);
+    }
+}
+
+PostEffects GameView::feel(const application::GameSession& session, float dt)
+{
+    const Car& car{session.car()};
+    const domain::DriftScore& drift{session.drift()};
+    float speed{std::clamp((car.speed - 25.0f) / 30.0f, 0.0f, 1.0f)};
+    float slide{std::clamp(std::fabs(car.slipAngle()) / 0.75f, 0.0f, 1.0f)};
+
+    // 倍率アップ・得点の確定・クラッシュの瞬間に画面を光らせる
+    if (drift.chaining() && drift.multiplier() > m_lastMultiplier)
+    {
+        m_flash = 0.16f;
+        m_flashColor = {1.0f, 0.3f, 0.8f};
+        m_camera.shake(0.25f);
+    }
+    bool newResult{drift.sinceLastResult() < m_lastSinceResult &&
+                   drift.lastResult() != domain::DriftScore::Result::None};
+    if (newResult)
+    {
+        bool banked{drift.lastResult() == domain::DriftScore::Result::Banked};
+        m_flash = banked ? 0.22f : 0.35f;
+        m_flashColor = banked ? Vec3{1.0f, 0.95f, 0.8f} : Vec3{1.0f, 0.15f, 0.1f};
+        m_camera.shake(banked ? 0.15f : 1.0f);
+    }
+    const domain::StreetLamps& lamps{session.lamps()};
+    if (lamps.sinceAllLit() < m_lastSinceAllLit)
+    {
+        // 1 周で全部灯した: 金色に光らせて大きく揺らす
+        m_flash = 0.45f;
+        m_flashColor = {1.0f, 0.8f, 0.3f};
+        m_camera.shake(0.6f);
+    }
+    m_lastSinceAllLit = lamps.sinceAllLit();
+    m_lastMultiplier = drift.chaining() ? drift.multiplier() : 1;
+    m_lastSinceResult = drift.sinceLastResult();
+    m_flash = std::max(0.0f, m_flash - dt * 0.9f);
+
+    PostEffects effects;
+    bool night{m_scenery != Scenery::Circuit};
+    effects.bloom = night ? 0.95f : 0.4f;
+    effects.bloomThreshold = night ? 0.74f : 0.88f;
+    effects.speedBlur = speed * 0.85f;
+    effects.aberration = slide * 0.9f + m_flash * 2.0f;
+    effects.vignette = 0.32f + 0.2f * slide;
+    effects.saturation = 1.05f + 0.3f * slide;
+    effects.flash = m_flash;
+    effects.flashColor = m_flashColor;
+    effects.time = m_time;
+    return effects;
+}
+
+void GameView::chooseLights(const Car& car, const domain::StreetLamps& lamps)
+{
+    m_lights.clear();
+    if (m_scenery != Scenery::Circuit)
+    {
+        // 夜は車のライトを点ける。前は道を照らし、後ろは煙を赤く染める
+        Vec3 forward{std::sin(car.yaw), 0, std::cos(car.yaw)};
+        Vec3 position{car.x, car.y, car.z};
+        m_lights.push_back({position + forward * 7.0f + Vec3{0, 0.9f, 0}, Vec3{0.95f, 0.9f, 0.75f} * 1.1f, 17.0f});
+        m_lights.push_back({position - forward * 2.8f + Vec3{0, 0.7f, 0}, Vec3{1.0f, 0.08f, 0.05f} * 0.9f, 7.0f});
+    }
+    // 灯した街灯は、倍率の色で明るくする。灯った直後はさらに強く
+    m_lampWork = m_lamps;
+    const auto& states{lamps.lamps()};
+    for (std::size_t i{}; i < m_fixtures.size() && i < states.size(); ++i)
+    {
+        const domain::StreetLamp& state{states[i]};
+        if (!state.lit)
+        {
+            continue;
+        }
+        float pulse{ignitionPulse(state.litAge)};
+        PointLight& light{m_lampWork[m_fixtures[i].light]};
+        light.color = multiplierColor(state.tier) * (LIT_POWER * (1.0f + 1.2f * pulse));
+        light.radius = LIT_RADIUS * (1.0f + 0.4f * pulse);
+    }
+    // 光の数には上限があるので、カメラに近い街灯から使う
+    Vec3 eye{m_camera.eye()};
+    std::size_t room{std::size_t(MAX_POINT_LIGHTS) - m_lights.size()};
+    std::size_t count{std::min(room, m_lampWork.size())};
+    std::partial_sort(m_lampWork.begin(), m_lampWork.begin() + std::ptrdiff_t(count), m_lampWork.end(),
+                      [eye](const PointLight& a, const PointLight& b)
+                      {
+                          Vec3 da{a.position - eye};
+                          Vec3 db{b.position - eye};
+                          // 遠くまで届く光は、遠くにあっても先に選ぶ
+                          return domain::dot(da, da) / (a.radius * a.radius) <
+                                 domain::dot(db, db) / (b.radius * b.radius);
+                      });
+    m_lights.insert(m_lights.end(), m_lampWork.begin(), m_lampWork.begin() + std::ptrdiff_t(count));
+    m_renderer.setPointLights(m_lights);
+}
+
+void GameView::react(const application::GameSession& session)
+{
+    const auto& states{session.lamps().lamps()};
+    m_shownTier.resize(states.size(), 0);
+    for (std::size_t i{}; i < states.size() && i < m_fixtures.size(); ++i)
+    {
+        int tier{states[i].lit ? states[i].tier : 0};
+        if (tier > m_shownTier[i])
+        {
+            // 灯った瞬間、灯りから倍率の色の粒を降らせる
+            m_bursts.burst(m_fixtures[i].head, multiplierColor(tier), 26 + 6 * tier, 7.0f, 0.32f);
+        }
+        m_shownTier[i] = tier;
+    }
+
+    const domain::Props& props{session.props()};
+    if (props.hits() > m_lastHits)
+    {
+        bool cone{props.lastHitKind() == domain::PropKind::Cone};
+        Vec3 color{cone ? Vec3{1.0f, 0.5f, 0.1f} : Vec3{1.0f, 0.85f, 0.3f}};
+        float strength{std::clamp(props.lastHitSpeed() / 25.0f, 0.4f, 1.3f)};
+        m_bursts.burst(props.lastHitPosition() + Vec3{0, 0.4f, 0}, color, int(18.0f * strength), 6.0f * strength,
+                       0.18f);
+        m_camera.shake(cone ? 0.08f : 0.18f);
+    }
+    m_lastHits = props.hits();
+}
+
+void GameView::collectLampHalos(const domain::StreetLamps& lamps, std::vector<Billboard>& out) const
+{
+    const auto& states{lamps.lamps()};
+    for (std::size_t i{}; i < m_fixtures.size(); ++i)
+    {
+        Billboard halo;
+        halo.position = m_fixtures[i].head - Vec3{0, 0.25f, 0};
+        bool lit{i < states.size() && states[i].lit};
+        Vec3 color{UNLIT_GLOW};
+        if (lit)
+        {
+            float pulse{ignitionPulse(states[i].litAge)};
+            color = multiplierColor(states[i].tier);
+            halo.size = 2.6f + 7.0f * pulse;
+            halo.a = 0.75f + 0.25f * pulse;
+        }
+        else
+        {
+            halo.size = 1.3f;
+            halo.a = 0.3f;
+        }
+        halo.r = color.x;
+        halo.g = color.y;
+        halo.b = color.z;
+        out.push_back(halo);
+    }
+}
+
+void GameView::drawProps(const domain::Props& props)
+{
+    for (const domain::Prop& prop : props.props())
+    {
+        m_renderer.draw(prop.kind == domain::PropKind::Cone ? m_cone : m_drum, propModelMatrix(prop));
+    }
 }
 
 void GameView::drawCar(const Car& car, const Track& track)

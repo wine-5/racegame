@@ -24,6 +24,7 @@ struct TrackPose
     float xzDist{};
     int corner{};
     int nameId{-1};
+    float halfWidth{};  // その場所の道幅の半分（m）
 };
 
 /**
@@ -39,6 +40,7 @@ struct TrackSample
     int corner{};
     int nameId{-1};
     bool bridge{};
+    float halfWidth{};  // 道幅の半分（m）。0 なら Track::halfWidth を使う
 };
 
 /**
@@ -49,7 +51,7 @@ struct Track
 {
     float originLat{};
     float originLon{};
-    float halfWidth{6.5f};
+    float halfWidth{6.5f};  // 道幅の半分の既定値。点ごとに決めていない場所で使う
     float curbWidth{0.8f};
     float runoff{8.0f};
     float length{};
@@ -79,8 +81,12 @@ struct Track
      */
     TrackPose query(float x, float z, float yHint, float preferS = -1.0f) const;
 
-    /// 中心線から壁までの横方向の距離
-    float wallLateral() const { return halfWidth + curbWidth + runoff; }
+    /**
+     * @brief 中心線から壁までの横方向の距離
+     * @param roadHalfWidth その場所の道幅の半分
+     * @return 壁までの距離（m）
+     */
+    float wallLateral(float roadHalfWidth) const { return roadHalfWidth + curbWidth + runoff; }
 
     /**
      * @brief コーナー名を取得する

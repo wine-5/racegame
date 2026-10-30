@@ -6,10 +6,12 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <utility>
 #include <vector>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #endif
 
 namespace adapters::sdl
@@ -24,32 +26,21 @@ constexpr int WINDOW_HEIGHT = 720;
 // ネイティブでフレームを回すときの最短間隔（ミリ秒）
 constexpr double NATIVE_FRAME_MS = 14.0;
 
-// 画面を保存するときの決まった操作。スタート直後の直線で加速し、右へ振ってドリフトに入る
-domain::DriveInput captureDrive(int frame)
-{
-    domain::DriveInput drive;
-    drive.throttle = 1;
-    if (frame >= 150 && frame < 165)
-    {
-        drive.steer = 1;
-        drive.handbrake = true;
-    }
-    else if (frame >= 165)
-    {
-        drive.steer = 0.5f;
-    }
-    return drive;
-}
+// 画面を保存するときに、この時間（フレーム）からドリフトのボタンを押し続ける
+constexpr int CAPTURE_DRIFT_FROM = 150;
 
 }  // namespace
 
-SdlApp::SdlApp(application::GameSession& session) : m_session(session)
+SdlApp::SdlApp(application::GameSession& session, std::vector<Stage> stages, int firstStage)
+    : m_session(session), m_stages(std::move(stages)), m_stageIndex(firstStage)
 {
 }
 
 SdlApp::~SdlApp()
 {
     m_input.close();
+    // 音の差し込み口を外してから、音声を閉じる
+    m_audio.close();
     if (m_audioOk)
     {
         Mix_CloseAudio();
@@ -86,10 +77,15 @@ bool SdlApp::init()
     {
         SDL_Log("IMG_Init failed: %s", IMG_GetError());
     }
-    m_audioOk = Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) == 0;
+    // 音の遅れを短くするため、バッファは小さめ（1024 フレーム ≒ 23 ms）
+    m_audioOk = Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) == 0;
     if (!m_audioOk)
     {
         SDL_Log("Mix_OpenAudio failed: %s", Mix_GetError());
+    }
+    else if (!m_audio.open())
+    {
+        SDL_Log("some sounds could not be loaded");
     }
     if (!initWindow())
     {
@@ -113,8 +109,8 @@ bool SdlApp::initWindow()
 #endif
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    m_window = SDL_CreateWindow("Suzuka Circuit", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH,
-                                WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
+    m_window = SDL_CreateWindow("Drift", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT,
+                                SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
     if (!m_window)
     {
         SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
@@ -127,11 +123,31 @@ bool SdlApp::initWindow()
         return false;
     }
     SDL_GL_SetSwapInterval(1);
-    if (!m_view.init(m_session.track()))
+    if (!m_view.init())
     {
         SDL_Log("GL init failed");
         return false;
     }
+    return loadStage(m_stageIndex);
+}
+
+bool SdlApp::loadStage(int index)
+{
+    if (index < 0 || index >= static_cast<int>(m_stages.size()))
+    {
+        return false;
+    }
+    const Stage& stage{m_stages[std::size_t(index)]};
+    if (!stage.source || !m_session.start(*stage.source))
+    {
+        SDL_Log("stage load failed: %s", stage.name.c_str());
+        return false;
+    }
+    m_stageIndex = index;
+    m_view.loadStage(m_session.track(), stage.scenery);
+    m_session.setLampSpots(m_view.lampSpots());
+    m_driftSound.reset();
+    SDL_Log("stage: %s", stage.name.c_str());
     return true;
 }
 
@@ -154,6 +170,51 @@ void SdlApp::run()
 #endif
 }
 
+void SdlApp::showTitle()
+{
+    m_screen = Screen::Title;
+    if (m_session.paused())
+    {
+        m_session.togglePause();
+    }
+    loadStage(m_stageIndex);
+}
+
+void SdlApp::startGame()
+{
+    m_screen = Screen::Playing;
+    loadStage(m_stageIndex);
+}
+
+void SdlApp::fitCanvas()
+{
+#ifdef __EMSCRIPTEN__
+    // ページの大きさ（CSS）に、キャンバスの画素数を合わせる。高精細な画面では画素を増やすが、重くならないよう 2 倍まで
+    double cssW{};
+    double cssH{};
+    emscripten_get_element_css_size("#canvas", &cssW, &cssH);
+    double ratio{std::min(emscripten_get_device_pixel_ratio(), 2.0)};
+    int width{static_cast<int>(cssW * ratio)};
+    int height{static_cast<int>(cssH * ratio)};
+    int currentW{};
+    int currentH{};
+    emscripten_get_canvas_element_size("#canvas", &currentW, &currentH);
+    if (width > 0 && height > 0 && (width != currentW || height != currentH))
+    {
+        emscripten_set_canvas_element_size("#canvas", width, height);
+    }
+#endif
+}
+
+void SdlApp::toggleFullscreen()
+{
+#ifndef __EMSCRIPTEN__
+    // ブラウザでは shell.html が全画面を切り替える
+    bool full{(SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0};
+    SDL_SetWindowFullscreen(m_window, full ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+#endif
+}
+
 void SdlApp::frameThunk(void* self)
 {
     static_cast<SdlApp*>(self)->frame();
@@ -166,7 +227,29 @@ void SdlApp::frame()
     {
         m_running = false;
     }
-    if (input.pause)
+    const bool playing{m_screen == Screen::Playing};
+    if (input.back)
+    {
+        if (playing)
+        {
+            showTitle();
+        }
+        else
+        {
+#ifndef __EMSCRIPTEN__
+            // タイトルで ESC を押すと終わる。ブラウザではタブを閉じればよいので何もしない
+            m_running = false;
+#endif
+        }
+    }
+    // タイトルでボタンを押した瞬間に、選んだステージを最初から始める
+    bool pressed{input.drift && !m_driftWasHeld};
+    m_driftWasHeld = input.drift;
+    if (!playing && pressed)
+    {
+        startGame();
+    }
+    if (playing && input.pause)
     {
         m_session.togglePause();
     }
@@ -174,14 +257,23 @@ void SdlApp::frame()
     {
         m_view.cycleCamera();
     }
+    if (input.fullscreen)
+    {
+        toggleFullscreen();
+    }
     if (input.help)
     {
         m_view.toggleHelp();
     }
-    if (input.reset)
+    if (input.stage >= 0 && input.stage != m_stageIndex)
+    {
+        loadStage(input.stage);
+    }
+    if (playing && input.reset)
     {
         m_session.reset();
         m_view.snapCamera();
+        m_driftSound.reset();
     }
 
     Uint64 now{SDL_GetPerformanceCounter()};
@@ -191,10 +283,8 @@ void SdlApp::frame()
     if (capturing)
     {
         elapsed = 1.0 / 60.0;
-        if (m_capture.autoDrive)
-        {
-            input.drive = captureDrive(m_frameCount);
-        }
+        // 画面の保存では自動で運転する。--drift ならボタンを押し、--autopilot なら押さない
+        input.drift = m_capture.autoDrive && m_frameCount >= CAPTURE_DRIFT_FROM;
     }
     if (elapsed > MAX_FRAME_SEC)
     {
@@ -205,12 +295,45 @@ void SdlApp::frame()
         elapsed = 0;
     }
 
-    m_session.advance(elapsed, input.drive);
+    application::PlayerControls controls{input.throttle, input.brake, input.steer, input.drift, false};
+    if (m_screen == Screen::Title)
+    {
+        // タイトルの後ろでは、デモとして自動でずっとドリフトさせて見せる
+        controls = application::PlayerControls{};
+        controls.drift = true;
+        controls.autoSteer = true;
+    }
+    else if (capturing)
+    {
+        controls.autoSteer = true;
+    }
+    m_session.advance(elapsed, controls);
+    m_driftSound.update(m_session.car(), m_session.drift(), m_session.lastInput().throttle, float(elapsed),
+                        m_session.paused());
+    m_driftSound.updateWorld(m_session.lamps(), m_session.props());
 
+    fitCanvas();
     int drawableW{};
     int drawableH{};
     SDL_GL_GetDrawableSize(m_window, &drawableW, &drawableH);
-    m_view.render(m_session, float(elapsed), drawableW, drawableH);
+#ifdef __EMSCRIPTEN__
+    // fitCanvas で変えたキャンバスの大きさを SDL は知らないので、キャンバスから直接読む
+    emscripten_get_canvas_element_size("#canvas", &drawableW, &drawableH);
+#endif
+    if (m_screen == Screen::Title)
+    {
+        gl::TitleScreen title;
+        for (const Stage& stage : m_stages)
+        {
+            title.stages.push_back(stage.name);
+        }
+        title.selected = m_stageIndex;
+        m_view.render(m_session, float(elapsed), drawableW, drawableH, &title);
+    }
+    else
+    {
+        m_view.render(m_session, float(elapsed), drawableW, drawableH);
+    }
     if (capturing && m_frameCount >= m_capture.frame)
     {
         saveCapture();

@@ -25,6 +25,13 @@ constexpr float DRIFT_FOV = 6.0f;
 constexpr float DRIFT_FOV_ANGLE = 0.8f;  // この角度で最大になる（ラジアン、約 46°）
 // 視野角が目標に追いつく速さ。急に変わると酔うので、位置より遅くする
 constexpr float FOV_RESPONSE = 2.5f;
+// 揺れの強さ 1 のときに、カメラが動く距離（m）と、揺れが収まる速さ
+constexpr float SHAKE_DISTANCE = 0.45f;
+constexpr float SHAKE_DECAY = 7.0f;
+// ドリフト中の細かい揺れ（滑り角 1 ラジアンにつき）
+constexpr float RUMBLE = 0.12f;
+// カメラが壁からこれだけ内側にいるようにする（m）
+constexpr float WALL_MARGIN = 0.6f;
 
 }  // namespace
 
@@ -59,6 +66,34 @@ void ChaseCamera::update(const domain::Car& car, const domain::Track& track, flo
     float blend{1.0f - std::exp(-dt * 7.0f)};
     m_eye = m_eye + (eye - m_eye) * blend;
     m_look = m_look + (look - m_look) * blend;
+    keepInside(track, car);
+
+    // 揺れ。深く速く滑っている間は、路面のざらつきのように細かく揺らし続ける
+    float rumble{std::fabs(car.slipAngle()) * std::fmin(car.speed / 30.0f, 1.0f) * RUMBLE};
+    float amount{std::fmax(m_shake, rumble)};
+    m_shakeTime += dt;
+    m_shakeOffset = Vec3{std::sin(m_shakeTime * 37.0f), std::sin(m_shakeTime * 43.0f + 1.3f) * 0.7f,
+                         std::sin(m_shakeTime * 31.0f + 2.1f)} *
+                    (amount * SHAKE_DISTANCE);
+    m_shake *= std::exp(-dt * SHAKE_DECAY);
+}
+
+void ChaseCamera::keepInside(const domain::Track& track, const domain::Car& car)
+{
+    // 壁（コンテナなど）の向こうへカメラが出ると、画面が壁の中になる。壁の少し内側へ戻す
+    TrackPose at{track.query(m_eye.x, m_eye.z, car.y, car.ground.s)};
+    if (!at.found)
+    {
+        return;
+    }
+    float limit{track.wallLateral(at.halfWidth) - WALL_MARGIN};
+    float over{std::fabs(at.lateral) - limit};
+    if (over > 0)
+    {
+        float sign{at.lateral > 0 ? 1.0f : -1.0f};
+        m_eye.x -= at.rightX * sign * over;
+        m_eye.z -= at.rightZ * sign * over;
+    }
 }
 
 const char* ChaseCamera::modeName() const

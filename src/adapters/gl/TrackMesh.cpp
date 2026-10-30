@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 
 namespace adapters::gl
 {
@@ -60,24 +61,28 @@ Vec3 onRoad(const Track& track, int index, float lateral)
     };
 }
 
-void addRibbon(CpuMesh& mesh, const Track& track, float lat0, float lat1, Vec3 color, bool flatOuter)
+// 中心線からの横の距離。点ごとに道幅が違うので、点の番号から求める
+using Lateral = std::function<float(int index)>;
+
+void addRibbon(CpuMesh& mesh, const Track& track, const Lateral& lat0, const Lateral& lat1, Vec3 color, bool flatOuter)
 {
     const int n{static_cast<int>(track.samples.size())};
     for (int i = 0; i < n; ++i)
     {
         int j{(i + 1) % n};
-        Vec3 a{onRoad(track, i, lat0)};
-        Vec3 b{onRoad(track, i, lat1)};
-        Vec3 c{onRoad(track, j, lat1)};
-        Vec3 d{onRoad(track, j, lat0)};
+        Vec3 a{onRoad(track, i, lat0(i))};
+        Vec3 b{onRoad(track, i, lat1(i))};
+        Vec3 c{onRoad(track, j, lat1(j))};
+        Vec3 d{onRoad(track, j, lat0(j))};
         if (flatOuter)
         {
             // 芝は縁石の外側の高さで水平にする。
-            float edge{(std::fabs(lat0) > std::fabs(lat1) ? lat1 : lat0)};
+            float edge{(std::fabs(lat0(i)) > std::fabs(lat1(i)) ? lat1(i) : lat0(i))};
             float sign{edge >= 0 ? 1.0f : -1.0f};
-            float edgeLat{sign * (track.halfWidth + track.curbWidth)};
-            float y0{track.samples[i].y + edgeLat * track.samples[i].cross};
-            float y1{track.samples[j].y + edgeLat * track.samples[j].cross};
+            float edgeLatI{sign * (track.samples[i].halfWidth + track.curbWidth)};
+            float edgeLatJ{sign * (track.samples[j].halfWidth + track.curbWidth)};
+            float y0{track.samples[i].y + edgeLatI * track.samples[i].cross};
+            float y1{track.samples[j].y + edgeLatJ * track.samples[j].cross};
             a.y = y0;
             b.y = y0;
             c.y = y1;
@@ -97,8 +102,7 @@ void addRibbon(CpuMesh& mesh, const Track& track, float lat0, float lat1, Vec3 c
 void addWalls(CpuMesh& mesh, const Track& track)
 {
     const int n{static_cast<int>(track.samples.size())};
-    const float inner{track.wallLateral()};
-    const float outer{inner + 0.4f};
+    const float thickness{0.4f};
     const float height{0.9f};
     const Vec3 concrete{0.62f, 0.63f, 0.66f};
     for (int side = -1; side <= 1; side += 2)
@@ -107,14 +111,17 @@ void addWalls(CpuMesh& mesh, const Track& track)
         for (int i = 0; i < n; ++i)
         {
             int j{(i + 1) % n};
-            Vec3 a{onRoad(track, i, sign * inner)};
-            Vec3 b{onRoad(track, j, sign * inner)};
-            Vec3 c{onRoad(track, j, sign * outer)};
-            Vec3 d{onRoad(track, i, sign * outer)};
+            float innerI{track.wallLateral(track.samples[i].halfWidth)};
+            float innerJ{track.wallLateral(track.samples[j].halfWidth)};
+            Vec3 a{onRoad(track, i, sign * innerI)};
+            Vec3 b{onRoad(track, j, sign * innerJ)};
+            Vec3 c{onRoad(track, j, sign * (innerJ + thickness))};
+            Vec3 d{onRoad(track, i, sign * (innerI + thickness))};
             // 芝の高さに合わせる
-            float edge{sign * (track.halfWidth + track.curbWidth)};
-            a.y = track.samples[i].y + edge * track.samples[i].cross;
-            b.y = track.samples[j].y + edge * track.samples[j].cross;
+            float edgeI{sign * (track.samples[i].halfWidth + track.curbWidth)};
+            float edgeJ{sign * (track.samples[j].halfWidth + track.curbWidth)};
+            a.y = track.samples[i].y + edgeI * track.samples[i].cross;
+            b.y = track.samples[j].y + edgeJ * track.samples[j].cross;
             c.y = b.y;
             d.y = a.y;
             Vec3 topA{a + Vec3{0, height, 0}};
@@ -137,17 +144,15 @@ void addCurbs(CpuMesh& mesh, const Track& track)
     for (int side = -1; side <= 1; side += 2)
     {
         float sign{float(side)};
-        float inner{sign * track.halfWidth};
-        float outer{sign * (track.halfWidth + track.curbWidth)};
         for (int i = 0; i < n; ++i)
         {
             int j{(i + 1) % n};
             bool paint{(static_cast<int>(track.samples[i].s / 3.0f) % 2) == 0};
             Vec3 color{paint ? red : white};
-            Vec3 a{onRoad(track, i, inner)};
-            Vec3 b{onRoad(track, i, outer)};
-            Vec3 c{onRoad(track, j, outer)};
-            Vec3 d{onRoad(track, j, inner)};
+            Vec3 a{onRoad(track, i, sign * track.samples[i].halfWidth)};
+            Vec3 b{onRoad(track, i, sign * (track.samples[i].halfWidth + track.curbWidth))};
+            Vec3 c{onRoad(track, j, sign * (track.samples[j].halfWidth + track.curbWidth))};
+            Vec3 d{onRoad(track, j, sign * track.samples[j].halfWidth)};
             Vec3 normal{normalize(roadNormal(track, i) + roadNormal(track, j))};
             mesh.addQuad(a, b, c, d, normal, color);
         }
@@ -180,8 +185,9 @@ void addStartLine(CpuMesh& mesh, const Track& track)
     const float depth{0.8f};
     for (int i = 0; i < cells; ++i)
     {
-        float lat0{-track.halfWidth + track.halfWidth * 2.0f * (float(i) / cells)};
-        float lat1{-track.halfWidth + track.halfWidth * 2.0f * (float(i + 1) / cells)};
+        const float half{track.samples[0].halfWidth};
+        float lat0{-half + half * 2.0f * (float(i) / cells)};
+        float lat1{-half + half * 2.0f * (float(i + 1) / cells)};
         Vec3 color{(i % 2 == 0) ? Vec3{0.92f, 0.92f, 0.94f} : Vec3{0.05f, 0.05f, 0.06f}};
         Vec3 p0{center + right * lat0};
         Vec3 p1{center + right * lat1};
@@ -195,7 +201,7 @@ void addStartLine(CpuMesh& mesh, const Track& track)
     }
 
     // スタートの門。位置が分かるようにする。
-    const float pillar{track.halfWidth + 1.1f};
+    const float pillar{track.samples[0].halfWidth + 1.1f};
     const Vec3 steel{0.22f, 0.24f, 0.28f};
     for (int side = -1; side <= 1; side += 2)
     {
@@ -282,11 +288,17 @@ void buildTrackMesh(const Track& track, CpuMesh& mesh)
 {
     mesh = CpuMesh{};
     addGround(mesh, track);
-    const float curbOuter{track.halfWidth + track.curbWidth};
-    const float grassOuter{curbOuter + track.runoff};
-    addRibbon(mesh, track, -grassOuter, -curbOuter, {0.15f, 0.36f, 0.14f}, true);
-    addRibbon(mesh, track, curbOuter, grassOuter, {0.15f, 0.36f, 0.14f}, true);
-    addRibbon(mesh, track, -track.halfWidth, track.halfWidth, {0.17f, 0.17f, 0.19f}, false);
+    // 芝は縁石の外側から壁まで、路面は左右の端まで。どちらも点ごとの道幅に合わせる
+    const Track& t{track};
+    Lateral curbOuterL{[&t](int k) { return -(t.samples[k].halfWidth + t.curbWidth); }};
+    Lateral curbOuterR{[&t](int k) { return t.samples[k].halfWidth + t.curbWidth; }};
+    Lateral grassOuterL{[&t](int k) { return -(t.samples[k].halfWidth + t.curbWidth + t.runoff); }};
+    Lateral grassOuterR{[&t](int k) { return t.samples[k].halfWidth + t.curbWidth + t.runoff; }};
+    Lateral roadL{[&t](int k) { return -t.samples[k].halfWidth; }};
+    Lateral roadR{[&t](int k) { return t.samples[k].halfWidth; }};
+    addRibbon(mesh, track, grassOuterL, curbOuterL, {0.15f, 0.36f, 0.14f}, true);
+    addRibbon(mesh, track, curbOuterR, grassOuterR, {0.15f, 0.36f, 0.14f}, true);
+    addRibbon(mesh, track, roadL, roadR, {0.17f, 0.17f, 0.19f}, false);
     addCurbs(mesh, track);
     addWalls(mesh, track);
     addPit(mesh, track.pit);

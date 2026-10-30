@@ -1,0 +1,58 @@
+# ブラウザ版をビルドして GitHub Pages に公開する。
+# main に push するか、Actions の画面から手動で実行すると動く。
+# 初回だけ、リポジトリの Settings → Pages → Source を「GitHub Actions」にしておく。
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 公開は 1 つずつ。新しい push が来たら、途中の公開は待たずに新しい方を使う
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 開発コンテナと同じ版の Emscripten
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.64
+          actions-cache-folder: emsdk-cache
+
+      - name: ビルド
+        run: |
+          emcmake cmake -B build-pages -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-pages
+
+      # 公開するファイルだけを集める。racegame.html をトップページにする
+      - name: 公開するファイルを集める
+        run: |
+          mkdir -p site
+          cp build-pages/racegame.js build-pages/racegame.wasm build-pages/racegame.data site/
+          cp build-pages/racegame.html site/index.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

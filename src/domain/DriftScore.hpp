@@ -28,6 +28,13 @@ public:
      */
     void update(const Car& car, float dt);
 
+    /**
+     * @brief ボーナスの点を足す
+     * @details 連続の途中なら連続の点に足し、あとで倍率がかかる。連続していなければそのまま確定する。
+     * @param points 足す点
+     */
+    void addBonus(float points);
+
     /// 最初からやり直す
     void reset() { *this = DriftScore{}; }
 
@@ -55,6 +62,9 @@ public:
     /// 最後の連続が終わってからの時間（秒）。HUD の表示を消すのに使う
     float sinceLastResult() const { return m_sinceLastResult; }
 
+    /// 最後に倍率が上がってからの時間（秒）。HUD で倍率を弾ませるのに使う
+    float sinceMultiplierUp() const { return m_sinceMultiplierUp; }
+
 private:
     /// 連続を終えて、点を確定するか失う
     void finishChain(Result result);
@@ -69,6 +79,7 @@ private:
     Result m_lastResult = Result::None;
     long long m_lastPoints{};
     float m_sinceLastResult{};
+    float m_sinceMultiplierUp{1e9f};
 };
 
 }  // namespace domain

@@ -14,6 +14,10 @@ struct DriveInput
     float brake{};     // 0..1  停止中は後退
     float steer{};     // -1..1  左が負、右が正
     bool handbrake{};  // 後輪だけをロックする。ドリフトのきっかけに使う
+    // ドリフト中に保つ角度（ラジアン）。負なら、ステアとアクセルから角度を決める
+    float driftAngle{-1.0f};
+    // ドリフトで曲がる向き（右が 1、左が -1）。0 以外なら、滑り始める前からその向きへ車の後ろを流す
+    float driftDirection{};
 };
 
 /**
@@ -55,6 +59,26 @@ struct Car
      * @return ラジアン。進む向きが車体より右なら正。ほぼ止まっているときは 0
      */
     float slipAngle() const;
+
+    /**
+     * @brief 前輪をどこまで切れるか
+     * @return 切れ角の上限（ラジアン）。ドリフト中は深く切れる
+     */
+    float maxLock() const;
+
+    /**
+     * @brief ステア入力 1 のときの切れ角
+     * @return ラジアン。速いほど小さく、滑っているほど大きい
+     */
+    float steerLimit() const;
+
+    /**
+     * @brief 前輪をこの角度にしたいときのステア入力を求める
+     * @details 自動運転が使う。カウンターステアの補助の分を差し引いて逆算する。
+     * @param wheelAngle 車体に対する前輪の角度（ラジアン、右が正）
+     * @return ステア入力（-1..1）
+     */
+    float steerInputFor(float wheelAngle) const;
 
     /**
      * @brief グリップしたまま進む

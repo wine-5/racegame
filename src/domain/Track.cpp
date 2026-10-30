@@ -13,6 +13,13 @@ bool Track::finalize()
     }
 
     length = 0;
+    for (TrackSample& sample : samples)
+    {
+        if (sample.halfWidth <= 0)
+        {
+            sample.halfWidth = halfWidth;
+        }
+    }
     for (size_t i = 0; i < samples.size(); ++i)
     {
         samples[i].s = length;
@@ -83,6 +90,7 @@ TrackPose Track::query(float x, float z, float yHint, float preferS) const
         best.xzDist = std::sqrt(dx * dx + dz * dz);
         best.corner = t < 0.5f ? a.corner : b.corner;
         best.nameId = t < 0.5f ? a.nameId : b.nameId;
+        best.halfWidth = a.halfWidth + (b.halfWidth - a.halfWidth) * t;
     }
     return best;
 }

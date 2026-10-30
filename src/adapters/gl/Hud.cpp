@@ -1,5 +1,7 @@
 #include "adapters/gl/Hud.hpp"
 
+#include "adapters/gl/MultiplierColor.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -118,8 +120,11 @@ void drawDrift(Renderer& renderer, const DriftScore& drift, const Car& car)
         float alpha{drift.drifting() ? 1.0f : 0.55f};
         std::snprintf(line, sizeof(line), "%d", static_cast<int>(drift.chainPoints()));
         drawCentered(renderer, 28, 5.0f, line, r, g, b, alpha);
+        // 倍率が上がった直後は大きく弾ませる
+        float pop{1.0f + 0.8f * std::exp(-drift.sinceMultiplierUp() * 7.0f)};
+        float scale{3.0f * pop};
         std::snprintf(line, sizeof(line), "X%d", drift.multiplier());
-        drawCentered(renderer, 72, 3.0f, line, r, g, b, alpha);
+        drawCentered(renderer, 72 - (scale - 3.0f) * 3.5f, scale, line, r, g, b, alpha);
 
         // 角度のゲージ
         float angle{std::fabs(car.slipAngle()) * RAD_TO_DEG};
@@ -149,9 +154,101 @@ void drawDrift(Renderer& renderer, const DriftScore& drift, const Car& car)
     }
 }
 
+// SCORE の下に、灯した街灯の数と、街灯 1 本ずつの色の並びを出す。全部灯したら大きく知らせる
+void drawLamps(Renderer& renderer, const domain::StreetLamps& lamps)
+{
+    constexpr float BANNER_SEC = 2.8f;
+    const auto& states{lamps.lamps()};
+    if (states.empty())
+    {
+        return;
+    }
+    char line[64];
+    std::snprintf(line, sizeof(line), "LAMPS %d/%d", lamps.litCount(), static_cast<int>(states.size()));
+    const float right{float(renderer.width()) - 24};
+    renderer.drawText(right - textWidth(line, 1.8f), 88, 1.8f, line, 0.85f, 0.9f, 1.0f, 1);
+
+    const float cell{7.0f};
+    const float gap{2.0f};
+    float x{right - float(states.size()) * (cell + gap) + gap};
+    for (const domain::StreetLamp& lamp : states)
+    {
+        domain::Vec3 color{lamp.lit ? multiplierColor(lamp.tier) : domain::Vec3{0.22f, 0.22f, 0.26f}};
+        float grow{lamp.lit ? 3.0f * std::exp(-lamp.litAge * 4.0f) : 0.0f};
+        renderer.addQuad(x - grow, 114 - grow, x + cell + grow, 114 + cell + grow, color.x, color.y, color.z, 1);
+        x += cell + gap;
+    }
+
+    if (lamps.sinceAllLit() < BANNER_SEC)
+    {
+        float t{lamps.sinceAllLit()};
+        float alpha{std::fmin(1.0f, (BANNER_SEC - t) * 2.0f)};
+        float pop{1.0f + 0.6f * std::exp(-t * 6.0f)};
+        float y{float(renderer.height()) * 0.3f};
+        drawCentered(renderer, y, 5.5f * pop, "PORT LIT UP", 1.0f, 0.82f, 0.3f, alpha);
+        std::snprintf(line, sizeof(line), "ALL LAMPS  +%d", static_cast<int>(domain::StreetLamps::ALL_LIT_BONUS));
+        drawCentered(renderer, y + 60 * pop, 2.6f, line, 1.0f, 0.95f, 0.75f, alpha);
+    }
+}
+
 }  // namespace
 
-void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& camera, bool showHelp)
+void drawTitle(Renderer& renderer, const TitleScreen& title, float time)
+{
+    renderer.beginHud();
+    const float w{float(renderer.width())};
+    const float h{float(renderer.height())};
+    // 画面全体を少し暗くし、上下に帯を入れて映画のように見せる
+    renderer.addQuad(0, 0, w, h, 0.0f, 0.0f, 0.02f, 0.35f);
+    renderer.addQuad(0, 0, w, h * 0.09f, 0, 0, 0, 0.85f);
+    renderer.addQuad(0, h * 0.91f, w, h, 0, 0, 0, 0.85f);
+
+    // 題名。少しずらして重ね描きし、ネオンのにじみに見せる
+    const char* name{"NIGHT PORT DRIFT"};
+    float scale{std::fmin(w / 140.0f, 11.0f)};
+    float y{h * 0.24f};
+    for (int i{3}; i >= 1; --i)
+    {
+        float spread{float(i) * scale * 0.35f};
+        float x{(w - textWidth(name, scale)) * 0.5f};
+        renderer.drawText(x - spread, y, scale, name, 1.0f, 0.15f, 0.65f, 0.10f);
+        renderer.drawText(x + spread, y, scale, name, 0.2f, 0.6f, 1.0f, 0.10f);
+    }
+    drawCentered(renderer, y, scale, name, 1.0f, 0.86f, 0.96f, 1.0f);
+    float lineY{y + scale * 9.0f};
+    float lineW{textWidth(name, scale) * 0.8f};
+    renderer.addQuad((w - lineW) * 0.5f, lineY, (w + lineW) * 0.5f, lineY + 3, 0.2f, 0.9f, 1.0f, 0.9f);
+    drawCentered(renderer, lineY + 18, scale * 0.28f, "WASD TO DRIVE  HOLD SPACE TO DRIFT", 0.75f, 0.85f, 1.0f, 0.9f);
+
+    // 始め方。ゆっくり点滅させる
+    float blink{0.55f + 0.45f * std::sin(time * 4.0f)};
+    drawCentered(renderer, h * 0.62f, scale * 0.42f, "PRESS SPACE / CLICK TO START", 1.0f, 0.95f, 0.6f, blink);
+
+    // ステージの一覧
+    float listY{h * 0.74f};
+    float itemScale{scale * 0.3f};
+    float gap{itemScale * 6.0f * 10.0f};
+    float total{gap * float(title.stages.size())};
+    float x0{(w - total) * 0.5f};
+    char line[64];
+    for (std::size_t i{}; i < title.stages.size(); ++i)
+    {
+        bool chosen{static_cast<int>(i) == title.selected};
+        std::snprintf(line, sizeof(line), "%d %s", static_cast<int>(i) + 1, title.stages[i].c_str());
+        float x{x0 + gap * float(i) + (gap - textWidth(line, itemScale)) * 0.5f};
+        if (chosen)
+        {
+            renderer.addQuad(x - 10, listY - 8, x + textWidth(line, itemScale) + 6, listY + itemScale * 7 + 8, 1.0f,
+                             0.2f, 0.65f, 0.35f);
+        }
+        renderer.drawText(x, listY, itemScale, line, 1, 1, 1, chosen ? 1.0f : 0.5f);
+    }
+    drawCentered(renderer, h * 0.93f + 4, scale * 0.22f, "1-3 STAGE   F FULLSCREEN   ESC TITLE", 0.7f, 0.75f, 0.85f,
+                 0.8f);
+    renderer.flushHud();
+}
+
+void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& camera, bool showHelp, bool showCredit)
 {
     Renderer& hud = renderer;
     hud.beginHud();
@@ -198,18 +295,22 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     if (showHelp)
     {
         hud.drawText(24, float(hud.height()) - 78, 1.7f,
-                     "W/UP ACCEL  S/DOWN BRAKE  A/D STEER  SPACE HANDBRAKE  R RESET  C CAMERA  P PAUSE", 0.9f, 0.92f,
-                     0.94f, 1);
+                     "WASD DRIVE  SPACE DRIFT  A/D DRIFT ANGLE    R RESET  C CAMERA  P PAUSE  F FULLSCREEN  1-3 STAGE",
+                     0.9f, 0.92f, 0.94f, 1);
         hud.drawText(24, float(hud.height()) - 54, 1.7f,
-                     "PAD: RT ACCEL  LT BRAKE  STICK STEER  A HANDBRAKE  Y CAMERA  BACK RESET  START PAUSE", 0.75f,
-                     0.8f, 0.84f, 1);
+                     "PAD: STICK STEER  RT GAS  LT BRAKE  A DRIFT  Y CAMERA  BACK RESET  START PAUSE", 0.75f, 0.8f,
+                     0.84f, 1);
     }
-    hud.drawText(float(hud.width()) - 250, float(hud.height()) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
+    if (showCredit)
+    {
+        hud.drawText(float(hud.width()) - 250, float(hud.height()) - 28, 1.6f, "(C) OSM / GSI", 0.85f, 0.88f, 0.9f, 1);
+    }
     if (session.paused())
     {
         hud.drawText(float(hud.width()) * 0.5f - 70, float(hud.height()) * 0.45f, 5.0f, "PAUSE", 1, 0.95f, 0.9f, 1);
     }
     drawDrift(renderer, session.drift(), session.car());
+    drawLamps(renderer, session.lamps());
     drawMinimap(renderer, session.track(), session.car());
     hud.flushHud();
 }

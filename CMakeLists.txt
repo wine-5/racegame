@@ -32,26 +32,44 @@ message(STATUS "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 add_library(racecore STATIC
     src/domain/Track.cpp
     src/domain/Car.cpp
+    src/domain/CourseBuilder.cpp
     src/domain/DriftScore.cpp
     src/domain/LapTimer.cpp
+    src/domain/Props.cpp
+    src/domain/StreetLamps.cpp
     src/application/GameSession.cpp
+    src/application/ManualDriver.cpp
+    src/application/OneButtonDriver.cpp
 )
 target_include_directories(racecore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 # racegame: 外側のアダプター（SDL・GL）と、それを組み立てる main。
 add_executable(racegame
     src/Main.cpp
+    src/adapters/audio/AudioMixer.cpp
+    src/adapters/audio/DriftSound.cpp
+    src/adapters/course/PortCourse.cpp
+    src/adapters/course/PracticeCircle.cpp
     src/adapters/file/TrackFile.cpp
     src/adapters/gl/CarMesh.cpp
     src/adapters/gl/ChaseCamera.cpp
     src/adapters/gl/GameView.cpp
     src/adapters/gl/Hud.cpp
+    src/adapters/gl/LightTrail.cpp
+    src/adapters/gl/PortScenery.cpp
+    src/adapters/gl/PostProcess.cpp
     src/adapters/gl/Renderer.cpp
+    src/adapters/gl/Shader.cpp
     src/adapters/gl/SkidMarks.cpp
+    src/adapters/gl/Sparks.cpp
+    src/adapters/gl/Bursts.cpp
+    src/adapters/gl/PropMesh.cpp
     src/adapters/gl/TireSmoke.cpp
     src/adapters/gl/TrackMesh.cpp
+    src/adapters/headless/Autopilot.cpp
     src/adapters/headless/SelfTest.cpp
     src/adapters/sdl/SdlApp.cpp
+    src/adapters/sdl/SdlAudio.cpp
     src/adapters/sdl/SdlInput.cpp
 )
 target_link_libraries(racegame PRIVATE racecore)
@@ -117,7 +135,10 @@ if(EMSCRIPTEN)
         "-sMAX_WEBGL_VERSION=2"
         "-sFULL_ES3=1"
         "SHELL:--preload-file ${ASSETS_DIR}@/assets"
+        # 画面いっぱいに表示し、キー入力をゲームに渡す専用のページ
+        "SHELL:--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html"
     )
+    set_property(TARGET racegame APPEND PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html")
 
     set_target_properties(racegame PROPERTIES SUFFIX ".html")
 

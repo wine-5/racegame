@@ -1,19 +1,14 @@
 #include "adapters/gl/Renderer.hpp"
 
+#include "adapters/gl/GlApi.hpp"
+#include "adapters/gl/Shader.hpp"
+
 #include <SDL.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-
-#ifdef __EMSCRIPTEN__
-#include <GLES3/gl3.h>
-#else
-#define GL_GLEXT_PROTOTYPES 1
-#include <GL/gl.h>
-#include <GL/glext.h>
-#endif
 
 namespace adapters::gl
 {
@@ -26,13 +21,6 @@ using domain::Vec3;
 
 namespace
 {
-
-const char* VERSION =
-#ifdef __EMSCRIPTEN__
-    "#version 300 es\nprecision highp float;\n";
-#else
-    "#version 330 core\n";
-#endif
 
 const char* WORLD_VS = R"GLSL(
 layout(location = 0) in vec3 aPos;
@@ -57,17 +45,36 @@ in vec3 vNormal;
 in vec3 vColor;
 in vec3 vWorld;
 uniform vec3 uCamPos;
+uniform vec3 uSunDir;
+uniform vec3 uSunColor;
+uniform vec3 uAmbient;
+uniform vec3 uFogColor;
+uniform vec2 uFog;  // 霧が始まる距離、濃くなりきるまでの距離
+const int MAX_LIGHTS = 24;
+uniform int uLightCount;
+uniform vec4 uLightPos[MAX_LIGHTS];  // xyz が位置、w が光の届く距離
+uniform vec3 uLightColor[MAX_LIGHTS];
 out vec4 fragColor;
 void main() {
+    float dist = distance(vWorld, uCamPos);
+    float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);
+    // 色の値が 1 を超える頂点は自分で光る（照明の電球やネオン）。1 を引いた色をそのまま出す
+    if (max(vColor.r, max(vColor.g, vColor.b)) > 1.0) {
+        fragColor = vec4(mix(vColor - 1.0, uFogColor, fog * 0.6), 1.0);
+        return;
+    }
     vec3 n = normalize(vNormal);
     if (!gl_FrontFacing) n = -n;
-    vec3 sun = normalize(vec3(0.35, 0.86, 0.28));
-    float light = 0.36 + 0.64 * max(dot(n, sun), 0.0);
-    vec3 color = vColor * light;
-    float dist = distance(vWorld, uCamPos);
-    float fog = clamp((dist - 90.0) / 1500.0, 0.0, 1.0);
-    vec3 haze = vec3(0.62, 0.74, 0.84);
-    fragColor = vec4(mix(color, haze, fog), 1.0);
+    vec3 light = uAmbient + uSunColor * max(dot(n, normalize(uSunDir)), 0.0);
+    for (int i = 0; i < MAX_LIGHTS; ++i) {
+        if (i >= uLightCount) break;
+        vec3 toLight = uLightPos[i].xyz - vWorld;
+        float d = length(toLight);
+        float fall = clamp(1.0 - d / uLightPos[i].w, 0.0, 1.0);
+        // 光の輪の縁がなめらかになるよう 2 乗で弱める。面の向きは半分だけ効かせる
+        light += uLightColor[i] * fall * fall * (0.4 + 0.6 * max(dot(n, toLight / max(d, 0.001)), 0.0));
+    }
+    fragColor = vec4(mix(vColor * light, uFogColor, fog), 1.0);
 }
 )GLSL";
 
@@ -82,12 +89,12 @@ void main() {
 
 const char* SKY_FS = R"GLSL(
 in float vY;
+uniform vec3 uSkyHorizon;
+uniform vec3 uSkyZenith;
 out vec4 fragColor;
 void main() {
     float t = clamp(vY * 0.5 + 0.5, 0.0, 1.0);
-    vec3 horizon = vec3(0.62, 0.74, 0.84);
-    vec3 zenith = vec3(0.28, 0.48, 0.78);
-    fragColor = vec4(mix(horizon, zenith, smoothstep(0.0, 1.0, t)), 1.0);
+    fragColor = vec4(mix(uSkyHorizon, uSkyZenith, smoothstep(0.0, 1.0, t)), 1.0);
 }
 )GLSL";
 
@@ -131,14 +138,37 @@ in vec2 vUv;
 in vec4 vColor;
 in vec3 vWorld;
 uniform vec3 uCamPos;
+uniform vec3 uSunColor;
+uniform vec3 uAmbient;
+uniform vec3 uFogColor;
+uniform vec2 uFog;
+const int MAX_LIGHTS = 24;
+uniform int uLightCount;
+uniform vec4 uLightPos[MAX_LIGHTS];  // xyz が位置、w が光の届く距離
+uniform vec3 uLightColor[MAX_LIGHTS];
+uniform int uGlow;  // 1 なら光の当たり方に関係なく、その色で光る（火花・光の尾）
 out vec4 fragColor;
 void main() {
     // 中心が濃く、縁にいくほど薄い丸
     float edge = 1.0 - smoothstep(0.2, 1.0, length(vUv));
+    if (uGlow == 1) {
+        fragColor = vec4(vColor.rgb, vColor.a * edge * edge);
+        return;
+    }
+    // 煙は向きを持たないので、光は向きに関係なく当たるとする
+    vec3 light = min(uAmbient + uSunColor, vec3(1.0));
+    for (int i = 0; i < MAX_LIGHTS; ++i) {
+        if (i >= uLightCount) break;
+        float d = distance(uLightPos[i].xyz, vWorld);
+        float fall = clamp(1.0 - d / uLightPos[i].w, 0.0, 1.0);
+        // 煙は重なると明るくなりすぎるので、光は控えめに当てる
+        light += uLightColor[i] * fall * fall * 0.3;
+    }
+    // 照明の下でも白く飛ばないよう、明るさに上限を付ける（ブルームでにじみすぎないように）
+    light = min(light, vec3(0.85));
     float dist = distance(vWorld, uCamPos);
-    float fog = clamp((dist - 90.0) / 1500.0, 0.0, 1.0);
-    vec3 haze = vec3(0.62, 0.74, 0.84);
-    fragColor = vec4(mix(vColor.rgb, haze, fog), vColor.a * edge);
+    float fog = clamp((dist - uFog.x) / uFog.y, 0.0, 1.0);
+    fragColor = vec4(mix(vColor.rgb * light, uFogColor, fog), vColor.a * edge);
 }
 )GLSL";
 
@@ -169,50 +199,6 @@ const std::uint8_t FONT[][7] = {
 };
 static_assert(sizeof(FONT) / sizeof(FONT[0]) == sizeof(GLYPH_ORDER) - 1, "glyph count");
 
-GLuint compileShader(GLenum type, const char* source)
-{
-    const char* parts[]{VERSION, source};
-    GLuint shader{glCreateShader(type)};
-    glShaderSource(shader, 2, parts, nullptr);
-    glCompileShader(shader);
-    GLint ok{0};
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-    if (!ok)
-    {
-        char log[1024];
-        glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
-        SDL_Log("shader compile failed: %s", log);
-        return 0;
-    }
-    return shader;
-}
-
-GLuint linkProgram(const char* vs, const char* fs)
-{
-    GLuint vertex{compileShader(GL_VERTEX_SHADER, vs)};
-    GLuint fragment{compileShader(GL_FRAGMENT_SHADER, fs)};
-    if (!vertex || !fragment)
-    {
-        return 0;
-    }
-    GLuint program{glCreateProgram()};
-    glAttachShader(program, vertex);
-    glAttachShader(program, fragment);
-    glLinkProgram(program);
-    glDeleteShader(vertex);
-    glDeleteShader(fragment);
-    GLint ok{0};
-    glGetProgramiv(program, GL_LINK_STATUS, &ok);
-    if (!ok)
-    {
-        char log[1024];
-        glGetProgramInfoLog(program, sizeof(log), nullptr, log);
-        SDL_Log("shader link failed: %s", log);
-        return 0;
-    }
-    return program;
-}
-
 int glyphIndex(char c)
 {
     if (c >= 'a' && c <= 'z')
@@ -232,10 +218,10 @@ int glyphIndex(char c)
 bool Renderer::init()
 {
     glGenVertexArrays(1, &m_dummyVao);
-    m_worldProgram = linkProgram(WORLD_VS, WORLD_FS);
-    m_skyProgram = linkProgram(SKY_VS, SKY_FS);
-    m_hudProgram = linkProgram(HUD_VS, HUD_FS);
-    m_particleProgram = linkProgram(PARTICLE_VS, PARTICLE_FS);
+    m_worldProgram = buildProgram(WORLD_VS, WORLD_FS);
+    m_skyProgram = buildProgram(SKY_VS, SKY_FS);
+    m_hudProgram = buildProgram(HUD_VS, HUD_FS);
+    m_particleProgram = buildProgram(PARTICLE_VS, PARTICLE_FS);
     if (!m_worldProgram || !m_skyProgram || !m_hudProgram || !m_particleProgram)
     {
         return false;
@@ -246,6 +232,24 @@ bool Renderer::init()
     m_uOrtho = glGetUniformLocation(m_hudProgram, "uOrtho");
     m_uParticleViewProj = glGetUniformLocation(m_particleProgram, "uViewProj");
     m_uParticleCamPos = glGetUniformLocation(m_particleProgram, "uCamPos");
+    m_uSunDir = glGetUniformLocation(m_worldProgram, "uSunDir");
+    m_uSunColor = glGetUniformLocation(m_worldProgram, "uSunColor");
+    m_uAmbient = glGetUniformLocation(m_worldProgram, "uAmbient");
+    m_uFogColor = glGetUniformLocation(m_worldProgram, "uFogColor");
+    m_uFog = glGetUniformLocation(m_worldProgram, "uFog");
+    m_uSkyHorizon = glGetUniformLocation(m_skyProgram, "uSkyHorizon");
+    m_uSkyZenith = glGetUniformLocation(m_skyProgram, "uSkyZenith");
+    m_uParticleSunColor = glGetUniformLocation(m_particleProgram, "uSunColor");
+    m_uParticleAmbient = glGetUniformLocation(m_particleProgram, "uAmbient");
+    m_uParticleFogColor = glGetUniformLocation(m_particleProgram, "uFogColor");
+    m_uParticleFog = glGetUniformLocation(m_particleProgram, "uFog");
+    m_uParticleGlow = glGetUniformLocation(m_particleProgram, "uGlow");
+    m_uLightCount = glGetUniformLocation(m_worldProgram, "uLightCount");
+    m_uLightPos = glGetUniformLocation(m_worldProgram, "uLightPos");
+    m_uLightColor = glGetUniformLocation(m_worldProgram, "uLightColor");
+    m_uParticleLightCount = glGetUniformLocation(m_particleProgram, "uLightCount");
+    m_uParticleLightPos = glGetUniformLocation(m_particleProgram, "uLightPos");
+    m_uParticleLightColor = glGetUniformLocation(m_particleProgram, "uLightColor");
 
     // 板 1 枚は 4 頂点。頂点は xyz + uv + rgba
     glGenVertexArrays(1, &m_particleVao);
@@ -283,7 +287,8 @@ bool Renderer::init()
 
 void Renderer::clearFrame()
 {
-    glClearColor(0.62f, 0.74f, 0.84f, 1.0f);
+    const Vec3& fog{m_lighting.fogColor};
+    glClearColor(fog.x, fog.y, fog.z, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
@@ -299,10 +304,29 @@ void Renderer::drawSky()
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
     glUseProgram(m_skyProgram);
+    const Lighting& l{m_lighting};
+    glUniform3f(m_uSkyHorizon, l.skyHorizon.x, l.skyHorizon.y, l.skyHorizon.z);
+    glUniform3f(m_uSkyZenith, l.skyZenith.x, l.skyZenith.y, l.skyZenith.z);
     glBindVertexArray(m_dummyVao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
+}
+
+void Renderer::setPointLights(const std::vector<PointLight>& lights)
+{
+    m_lightCount = std::min(static_cast<int>(lights.size()), MAX_POINT_LIGHTS);
+    for (int i{}; i < m_lightCount; ++i)
+    {
+        const PointLight& light{lights[std::size_t(i)]};
+        m_lightPos[i * 4 + 0] = light.position.x;
+        m_lightPos[i * 4 + 1] = light.position.y;
+        m_lightPos[i * 4 + 2] = light.position.z;
+        m_lightPos[i * 4 + 3] = light.radius;
+        m_lightColor[i * 3 + 0] = light.color.x;
+        m_lightColor[i * 3 + 1] = light.color.y;
+        m_lightColor[i * 3 + 2] = light.color.z;
+    }
 }
 
 void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
@@ -312,11 +336,20 @@ void Renderer::beginWorld(const Mat4& viewProj, Vec3 cameraPos)
     glUseProgram(m_worldProgram);
     glUniformMatrix4fv(m_uViewProj, 1, GL_FALSE, viewProj.m);
     glUniform3f(m_uCamPos, cameraPos.x, cameraPos.y, cameraPos.z);
+    const Lighting& l{m_lighting};
+    glUniform3f(m_uSunDir, l.sunDir.x, l.sunDir.y, l.sunDir.z);
+    glUniform3f(m_uSunColor, l.sunColor.x, l.sunColor.y, l.sunColor.z);
+    glUniform3f(m_uAmbient, l.ambient.x, l.ambient.y, l.ambient.z);
+    glUniform3f(m_uFogColor, l.fogColor.x, l.fogColor.y, l.fogColor.z);
+    glUniform2f(m_uFog, l.fogStart, l.fogRange);
+    glUniform1i(m_uLightCount, m_lightCount);
+    glUniform4fv(m_uLightPos, MAX_POINT_LIGHTS, m_lightPos);
+    glUniform3fv(m_uLightColor, MAX_POINT_LIGHTS, m_lightColor);
     m_viewProj = viewProj;
     m_cameraPos = cameraPos;
 }
 
-void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, Vec3 cameraUp)
+void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, Vec3 cameraUp, bool glowing)
 {
     if (items.empty())
     {
@@ -345,11 +378,21 @@ void Renderer::drawBillboards(std::vector<Billboard>& items, Vec3 cameraRight, V
     }
 
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // 光るものは足し合わせ（重なるほど明るい）、煙は普通に重ねる
+    glBlendFunc(GL_SRC_ALPHA, glowing ? GL_ONE : GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
     glUseProgram(m_particleProgram);
     glUniformMatrix4fv(m_uParticleViewProj, 1, GL_FALSE, m_viewProj.m);
     glUniform3f(m_uParticleCamPos, m_cameraPos.x, m_cameraPos.y, m_cameraPos.z);
+    const Lighting& l{m_lighting};
+    glUniform3f(m_uParticleSunColor, l.sunColor.x, l.sunColor.y, l.sunColor.z);
+    glUniform3f(m_uParticleAmbient, l.ambient.x, l.ambient.y, l.ambient.z);
+    glUniform3f(m_uParticleFogColor, l.fogColor.x, l.fogColor.y, l.fogColor.z);
+    glUniform1i(m_uParticleGlow, glowing ? 1 : 0);
+    glUniform2f(m_uParticleFog, l.fogStart, l.fogRange);
+    glUniform1i(m_uParticleLightCount, m_lightCount);
+    glUniform4fv(m_uParticleLightPos, MAX_POINT_LIGHTS, m_lightPos);
+    glUniform3fv(m_uParticleLightColor, MAX_POINT_LIGHTS, m_lightColor);
     glBindVertexArray(m_particleVao);
     glBindBuffer(GL_ARRAY_BUFFER, m_particleVbo);
     glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(m_particleVerts.size() * sizeof(float)), m_particleVerts.data(),
@@ -534,6 +577,17 @@ void Renderer::update(GpuMesh& gpu, const CpuMesh& mesh)
                  mesh.indices.data(), GL_DYNAMIC_DRAW);
     gpu.indexCount = static_cast<int>(mesh.indices.size());
     glBindVertexArray(m_dummyVao);
+}
+
+void Renderer::release(GpuMesh& gpu)
+{
+    if (gpu.vao != 0)
+    {
+        glDeleteVertexArrays(1, &gpu.vao);
+        glDeleteBuffers(1, &gpu.vbo);
+        glDeleteBuffers(1, &gpu.ibo);
+    }
+    gpu = GpuMesh{};
 }
 
 void Renderer::readPixels(std::vector<std::uint8_t>& rgba) const
