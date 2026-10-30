@@ -222,7 +222,7 @@ void drawTitle(Renderer& renderer, const TitleScreen& title, float time)
 
     // 始め方。ゆっくり点滅させる
     float blink{0.55f + 0.45f * std::sin(time * 4.0f)};
-    drawCentered(renderer, h * 0.62f, scale * 0.42f, "PRESS SPACE / CLICK TO START", 1.0f, 0.95f, 0.6f, blink);
+    drawCentered(renderer, h * 0.62f, scale * 0.42f, "PRESS SPACE / A TO START", 1.0f, 0.95f, 0.6f, blink);
 
     // ステージの一覧
     float listY{h * 0.74f};
@@ -243,8 +243,8 @@ void drawTitle(Renderer& renderer, const TitleScreen& title, float time)
         }
         renderer.drawText(x, listY, itemScale, line, 1, 1, 1, chosen ? 1.0f : 0.5f);
     }
-    drawCentered(renderer, h * 0.93f + 4, scale * 0.22f, "1-3 STAGE   F FULLSCREEN   ESC TITLE", 0.7f, 0.75f, 0.85f,
-                 0.8f);
+    drawCentered(renderer, h * 0.93f + 4, scale * 0.22f, "1-3 / D-PAD STAGE   F FULLSCREEN   ESC / B TITLE", 0.7f,
+                 0.75f, 0.85f, 0.8f);
     renderer.flushHud();
 }
 
@@ -295,11 +295,11 @@ void drawHud(Renderer& renderer, const GameSession& session, const ChaseCamera& 
     if (showHelp)
     {
         hud.drawText(24, float(hud.height()) - 78, 1.7f,
-                     "WASD DRIVE  SPACE DRIFT  A/D DRIFT ANGLE    R RESET  C CAMERA  P PAUSE  F FULLSCREEN  1-3 STAGE",
+                     "WASD DRIVE  SPACE DRIFT  A/D DRIFT LINE    R RESET  C CAMERA  P PAUSE  F FULLSCREEN  1-3 STAGE",
                      0.9f, 0.92f, 0.94f, 1);
         hud.drawText(24, float(hud.height()) - 54, 1.7f,
-                     "PAD: STICK STEER  RT GAS  LT BRAKE  A DRIFT  Y CAMERA  BACK RESET  START PAUSE", 0.75f, 0.8f,
-                     0.84f, 1);
+                     "PAD: STICK STEER  RT GAS  LT BRAKE  A/RB DRIFT  B TITLE  Y CAMERA  BACK RESET  START PAUSE",
+                     0.75f, 0.8f, 0.84f, 1);
     }
     if (showCredit)
     {
