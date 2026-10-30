@@ -69,7 +69,7 @@ void GameSession::step(const PlayerControls& controls)
 {
     const float dt{float(FIXED_STEP_SEC)};
     m_lastInput = controls.autoSteer ? m_autoDriver.drive(m_car, m_track, controls.drift, dt)
-                                     : m_manualDriver.drive(m_car, controls, dt);
+                                     : m_manualDriver.drive(m_car, m_track, controls, dt);
     m_car.update(dt, m_lastInput, m_track);
     const int lapsBefore{m_lap.completed()};
     m_lap.tick(m_car.ground.s, m_track.length, dt);
