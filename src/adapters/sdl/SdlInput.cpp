@@ -4,6 +4,7 @@
 #include <cstring>
 
 #ifdef __EMSCRIPTEN__
+#include <emscripten/em_js.h>
 #include <emscripten/html5.h>
 #endif
 
@@ -19,6 +20,8 @@ struct PadPulse
     bool reset{};
     bool pause{};
     bool camera{};
+    bool back{};      // B: タイトルへ戻る
+    int stageStep{};  // 十字キーの左右: タイトルでステージを選ぶ
 };
 
 constexpr float STICK_DEADZONE = 0.15f;  // スティックの遊び。これより小さい傾きは 0 にする
@@ -47,6 +50,20 @@ void mergePad(InputFrame& frame, float steer, float throttle, float brake, bool 
 }
 
 #ifdef __EMSCRIPTEN__
+// ブラウザのパッドを振動させる。振動に対応していないブラウザやパッドでは何もしない
+// clang-format off
+EM_JS(void, browserRumble, (double strong, double weak, int durationMs), {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const pad of pads) {
+        if (pad && pad.vibrationActuator) {
+            pad.vibrationActuator.playEffect('dual-rumble', {
+                duration: durationMs, strongMagnitude: strong, weakMagnitude: weak
+            }).catch(function() {});
+        }
+    }
+});
+// clang-format on
+
 /**
  * ブラウザのゲームパッドを Gamepad API から読む。SDL はブラウザのパッドを
  * ゲームコントローラと認識しないことが多いため。標準の並びで、左スティック（軸 0）でステア、
@@ -54,16 +71,18 @@ void mergePad(InputFrame& frame, float steer, float throttle, float brake, bool 
  */
 PadPulse readBrowserPad(InputFrame& frame)
 {
+    // 押した瞬間だけ立てたいボタンの番号（標準の並び）: Y, Back, Start, B, 十字キーの左, 右
+    constexpr int PULSE_BUTTONS[]{3, 8, 9, 1, 14, 15};
+    constexpr int PULSE_COUNT{static_cast<int>(sizeof(PULSE_BUTTONS) / sizeof(PULSE_BUTTONS[0]))};
+    static bool previous[PULSE_COUNT]{};
+    bool now[PULSE_COUNT]{};
     PadPulse pulse;
-    static bool prevCamera{false};
-    static bool prevReset{false};
-    static bool prevPause{false};
-    bool camera{false};
-    bool reset{false};
-    bool pause{false};
     if (emscripten_sample_gamepad_data() != EMSCRIPTEN_RESULT_SUCCESS)
     {
-        prevCamera = prevReset = prevPause = false;
+        for (bool& held : previous)
+        {
+            held = false;
+        }
         return pulse;
     }
     const int count{emscripten_get_num_gamepads()};
@@ -78,17 +97,25 @@ PadPulse readBrowserPad(InputFrame& frame)
         auto analog = [&](int index)
         { return index < pad.numButtons ? static_cast<float>(pad.analogButton[index]) : 0.0f; };
         float stick{pad.numAxes > 0 ? static_cast<float>(pad.axis[0]) : 0.0f};
-        mergePad(frame, stick, analog(7), analog(6), held(0));
-        camera = camera || held(3);
-        reset = reset || held(8);
-        pause = pause || held(9);
+        // 十字キーの左右でもステアできる
+        float dpad{(held(15) ? 1.0f : 0.0f) - (held(14) ? 1.0f : 0.0f)};
+        mergePad(frame, std::fabs(dpad) > 0.0f ? dpad : stick, analog(7), analog(6), held(0) || held(5));
+        for (int b{}; b < PULSE_COUNT; ++b)
+        {
+            now[b] = now[b] || held(PULSE_BUTTONS[b]);
+        }
     }
-    pulse.camera = camera && !prevCamera;
-    pulse.reset = reset && !prevReset;
-    pulse.pause = pause && !prevPause;
-    prevCamera = camera;
-    prevReset = reset;
-    prevPause = pause;
+    bool pressed[PULSE_COUNT]{};
+    for (int b{}; b < PULSE_COUNT; ++b)
+    {
+        pressed[b] = now[b] && !previous[b];
+        previous[b] = now[b];
+    }
+    pulse.camera = pressed[0];
+    pulse.reset = pressed[1];
+    pulse.pause = pressed[2];
+    pulse.back = pressed[3];
+    pulse.stageStep = (pressed[5] ? 1 : 0) - (pressed[4] ? 1 : 0);
     return pulse;
 }
 #endif
@@ -109,8 +136,13 @@ void readDriving(SDL_GameController* pad, PadPulse& pulse, InputFrame& frame)
     {
         auto axis = [&](SDL_GameControllerAxis which)
         { return static_cast<float>(SDL_GameControllerGetAxis(pad, which)) / 32767.0f; };
-        mergePad(frame, axis(SDL_CONTROLLER_AXIS_LEFTX), axis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT),
-                 axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT), SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_A) != 0);
+        auto button = [&](SDL_GameControllerButton which) { return SDL_GameControllerGetButton(pad, which) != 0; };
+        // 十字キーの左右でもステアできる
+        float dpad{(button(SDL_CONTROLLER_BUTTON_DPAD_RIGHT) ? 1.0f : 0.0f) -
+                   (button(SDL_CONTROLLER_BUTTON_DPAD_LEFT) ? 1.0f : 0.0f)};
+        mergePad(frame, std::fabs(dpad) > 0.0f ? dpad : axis(SDL_CONTROLLER_AXIS_LEFTX),
+                 axis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT), axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT),
+                 button(SDL_CONTROLLER_BUTTON_A) || button(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER));
     }
     (void)pulse;
 #else
@@ -119,6 +151,8 @@ void readDriving(SDL_GameController* pad, PadPulse& pulse, InputFrame& frame)
     pulse.camera = pulse.camera || browser.camera;
     pulse.reset = pulse.reset || browser.reset;
     pulse.pause = pulse.pause || browser.pause;
+    pulse.back = pulse.back || browser.back;
+    pulse.stageStep += browser.stageStep;
 #endif
 }
 
@@ -203,6 +237,12 @@ InputFrame SdlInput::poll()
                 frame.pause = true;
             else if (event.cbutton.button == SDL_CONTROLLER_BUTTON_Y)
                 frame.camera = true;
+            else if (event.cbutton.button == SDL_CONTROLLER_BUTTON_B)
+                frame.back = true;
+            else if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
+                --frame.stageStep;
+            else if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
+                ++frame.stageStep;
         }
     }
     PadPulse padPulse;
@@ -210,7 +250,24 @@ InputFrame SdlInput::poll()
     frame.reset = frame.reset || padPulse.reset;
     frame.pause = frame.pause || padPulse.pause;
     frame.camera = frame.camera || padPulse.camera;
+    frame.back = frame.back || padPulse.back;
+    frame.stageStep += padPulse.stageStep;
     return frame;
+}
+
+void SdlInput::rumble(float strong, float weak, int durationMs)
+{
+    strong = std::fmin(std::fmax(strong, 0.0f), 1.0f);
+    weak = std::fmin(std::fmax(weak, 0.0f), 1.0f);
+#ifdef __EMSCRIPTEN__
+    browserRumble(strong, weak, durationMs);
+#else
+    if (m_pad)
+    {
+        SDL_GameControllerRumble(m_pad, static_cast<Uint16>(strong * 65535.0f), static_cast<Uint16>(weak * 65535.0f),
+                                 static_cast<Uint32>(durationMs));
+    }
+#endif
 }
 
 }  // namespace adapters::sdl

@@ -245,9 +245,14 @@ void SdlApp::frame()
     // タイトルでボタンを押した瞬間に、選んだステージを最初から始める
     bool pressed{input.drift && !m_driftWasHeld};
     m_driftWasHeld = input.drift;
-    if (!playing && pressed)
+    if (!playing && (pressed || input.pause))
     {
         startGame();
+    }
+    if (!playing && input.stageStep != 0)
+    {
+        int count{static_cast<int>(m_stages.size())};
+        loadStage(((m_stageIndex + input.stageStep) % count + count) % count);
     }
     if (playing && input.pause)
     {
