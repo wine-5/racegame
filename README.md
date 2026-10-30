@@ -133,6 +133,14 @@ python3 tools/serve.py 8080  # キャッシュさせないサーバー
 
 `http://localhost:8080/build-web/racegame.html`
 
+## GitHub Pages で公開
+
+`main` に push すると、`.github/workflows/pages.yml` がブラウザ版を Release でビルドして GitHub Pages に公開します。
+Actions の画面から手動でも実行できます。
+
+初回だけ、リポジトリの **Settings → Pages → Build and deployment → Source** を **GitHub Actions** にします。
+公開先は `https://<ユーザー名>.github.io/<リポジトリ名>/` です。
+
 ## Linux 版
 
 ```bash
